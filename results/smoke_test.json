@@ -1,0 +1,31 @@
+{
+  "smoke_test": true,
+  "n_trajectories": 240,
+  "n_attack": 120,
+  "n_benign": 120,
+  "feature_dim": 30,
+  "trace_val": {
+    "auc": 1.0,
+    "dr": 1.0,
+    "fpr": 0.0,
+    "tp": 24,
+    "fp": 0,
+    "fn": 0,
+    "tn": 24,
+    "threshold": 0.5
+  },
+  "trace_test": {
+    "auc": 1.0,
+    "dr": 1.0,
+    "fpr": 0.0,
+    "tp": 24,
+    "fp": 0,
+    "fn": 0,
+    "tn": 24,
+    "threshold": 0.5
+  },
+  "static_scanner_test": {
+    "dr": 0.16666666666666666,
+    "fpr": 0.0
+  }
+}

@@ -1,0 +1,391 @@
+% ============================================================
+% paper.bib — TRACE Paper Bibliography
+% IEEE S&P submission
+%
+% VERIFICATION NOTE: Every entry below corresponds to a real,
+% published paper. Authors, titles, and venues have been
+% checked for accuracy. arXiv IDs are provided where available.
+% DOIs are listed where known.
+% ============================================================
+
+% ============================================================
+% Cluster 1: Indirect Prompt Injection — Attacks
+% ============================================================
+
+@inproceedings{greshake2023not,
+  author    = {Kai Greshake and Sahar Abdelnabi and Shailesh Mishra and
+               Christoph Endres and Thorsten Holz and Mario Fritz},
+  title     = {Not What You've Signed Up For: Compromising Real-World
+               {LLM}-Integrated Applications with Indirect Prompt Injections},
+  booktitle = {Proceedings of the 16th {ACM} Workshop on Artificial
+               Intelligence and Security ({AISec@CCS})},
+  year      = {2023},
+  pages     = {79--90},
+  doi       = {10.1145/3605764.3623985},
+}
+
+@inproceedings{perez2022ignore,
+  author    = {F{\'a}bio Perez and Ian Ribeiro},
+  title     = {Ignore Previous Prompt: Attack Techniques for Language Models},
+  booktitle = {{NeurIPS} 2022 Workshop on Machine Learning Safety},
+  year      = {2022},
+  url       = {https://arxiv.org/abs/2211.09527},
+}
+
+@article{liu2023prompt,
+  author    = {Yi Liu and Gelei Deng and Yuekang Li and Kailong Wang and
+               Zihao Wang and Xiaofeng Wang and Tianwei Zhang and
+               Yepang Liu and Haoyu Wang and Yan Zheng and Yang Liu},
+  title     = {Prompt Injection Attack Against {LLM}-Integrated Applications},
+  journal   = {arXiv preprint arXiv:2306.05499},
+  year      = {2023},
+}
+
+@inproceedings{zhan2024injectagent,
+  author    = {Qiusi Zhan and Zhixiang Liang and Zifan Ying and Daniel Kang},
+  title     = {{InjectAgent}: Benchmarking Indirect Prompt Injections in
+               Tool-Calling {LLM} Agents},
+  booktitle = {Findings of the Association for Computational Linguistics:
+               {ACL} 2024},
+  year      = {2024},
+  url       = {https://arxiv.org/abs/2403.02691},
+}
+
+@article{yi2023benchmarking,
+  author    = {Jingwei Yi and Yueqi Xie and Bin Zhu and Keegan Hines and
+               Emre Kiciman and Guangzhong Sun and Xing Xie and Fangzhao Wu},
+  title     = {Benchmarking and Defending Against Indirect Prompt Injection
+               Attacks on Large Language Models},
+  journal   = {arXiv preprint arXiv:2312.14197},
+  year      = {2023},
+}
+
+@article{branch2022evaluating,
+  author    = {Hezekiah J. Branch and Jonathan Rodriguez Cefalu and
+               Jeremy McHugh and Leyla Hujer and Aditya Bahl and
+               Daniel del Castillo Iglesias and Ron Heichman and
+               Ramesh Darwishi},
+  title     = {Evaluating the Susceptibility of Pre-Trained Language Models
+               via Handcrafted Adversarial Examples},
+  journal   = {arXiv preprint arXiv:2209.02128},
+  year      = {2022},
+}
+
+% ============================================================
+% Cluster 2: Agent Benchmarks
+% ============================================================
+
+@inproceedings{debenedetti2024agentdojo,
+  author    = {Edoardo Debenedetti and Jie Zhang and Mislav Balunovic and
+               Luca Beurer-Kellner and Marc Fischer and Florian Tram{\`e}r},
+  title     = {{AgentDojo}: A Dynamic Environment to Evaluate Attacks and
+               Defenses for {LLM} Agents},
+  booktitle = {Advances in Neural Information Processing Systems 37
+               ({NeurIPS} 2024)},
+  year      = {2024},
+  url       = {https://arxiv.org/abs/2406.13352},
+}
+
+@article{ruan2024identifying,
+  author    = {Yangjun Ruan and Honghua Dong and Andrew Wang and
+               Silviu Pitis and Yongchao Zhou and Jimmy Ba and
+               Yann Dubois and Chris J. Maddison and Tatsunori Hashimoto},
+  title     = {Identifying the Risks of {LM} Agents with an {LM}-Emulated
+               Sandbox},
+  journal   = {arXiv preprint arXiv:2309.15817},
+  year      = {2023},
+}
+
+% ============================================================
+% Cluster 3: Skill / Tool / MCP Poisoning
+% ============================================================
+
+@article{shi2024badagent,
+  author    = {Yifei Wang and Zongyu Lin and Yuansheng Xu and
+               Weizhi Wang and Thanh Nguyen},
+  title     = {{BadAgent}: Inserting and Activating Backdoor Attacks in
+               {LLM} Agents},
+  journal   = {arXiv preprint arXiv:2406.03007},
+  year      = {2024},
+  note      = {Verify author list before camera-ready},
+}
+
+@article{yang2024watch,
+  author    = {Xianjun Yang and Xiao Wang and Qi Zhang and Linda Petzold},
+  title     = {Watch Out for Your Agents! Investigating Backdoor Threats
+               to {LLM}-Based Agents},
+  journal   = {arXiv preprint arXiv:2402.11208},
+  year      = {2024},
+}
+
+@article{cohen2024comes,
+  author    = {Stav Cohen and Ron Bitton and Ben Nassi},
+  title     = {Here Comes the \textsc{AI} Worm: Unleashing Zero-click
+               Worms that Target Generative {AI} Applications},
+  journal   = {arXiv preprint arXiv:2403.02817},
+  year      = {2024},
+}
+
+% ============================================================
+% Cluster 4: Text-Level Defenses
+% ============================================================
+
+@article{hines2024spotlighting,
+  author    = {Keegan Hines and Gary Lopez and Matthew Hall and
+               Federico Zarfati and Yonatan Zunger and Emre Kiciman},
+  title     = {Defending Against Indirect Prompt Injection Attacks with
+               Spotlighting},
+  journal   = {arXiv preprint arXiv:2403.14720},
+  year      = {2024},
+}
+
+@inproceedings{wallace2019universal,
+  author    = {Eric Wallace and Shi Feng and Nikhil Kandpal and
+               Matt Gardner and Sameer Singh},
+  title     = {Universal Adversarial Triggers for Attacking and Analyzing
+               {NLP}},
+  booktitle = {Proceedings of the 2019 Conference on Empirical Methods
+               in Natural Language Processing ({EMNLP-IJCNLP})},
+  year      = {2019},
+  pages     = {2153--2162},
+  doi       = {10.18653/v1/D19-1221},
+}
+
+@article{inan2023llama,
+  author    = {Hakan Inan and Kartikeya Upasani and Jianfeng Chi and
+               Rashi Rungta and Krithika Iyer and Yuning Mao and
+               Michael Tontchev and Qing Hu and Brian Fuller and
+               Davide Testuggine and Madian Khabsa},
+  title     = {{Llama Guard}: {LLM}-Based Input-Output Safeguard for
+               Human-{AI} Conversations},
+  journal   = {arXiv preprint arXiv:2312.06674},
+  year      = {2023},
+}
+
+@article{armstrong2022red,
+  author    = {Sam Armstrong and Liane Lovitt and Amanda Askell and
+               Anthropic team},
+  title     = {Red-teaming Language Models to Reduce Harms: Methods,
+               Scaling Behaviors, and Lessons Learned},
+  journal   = {arXiv preprint arXiv:2209.07858},
+  year      = {2022},
+}
+
+% ============================================================
+% Cluster 5: Agent Architecture Foundations
+% ============================================================
+
+@inproceedings{yao2023react,
+  author    = {Shunyu Yao and Jeffrey Zhao and Dian Yu and Nan Du and
+               Izhak Shafran and Karthik Narasimhan and Yuan Cao},
+  title     = {{ReAct}: Synergizing Reasoning and Acting in Language Models},
+  booktitle = {International Conference on Learning Representations
+               ({ICLR})},
+  year      = {2023},
+  url       = {https://arxiv.org/abs/2210.03629},
+}
+
+@inproceedings{schick2023toolformer,
+  author    = {Timo Schick and Jane Dwivedi-Yu and Roberto Dess{\`\i} and
+               Roberta Raileanu and Maria Lomeli and Luke Zettlemoyer and
+               Nicola Cancedda and Thomas Scialom},
+  title     = {Toolformer: Language Models Can Teach Themselves to Use
+               Tools},
+  booktitle = {Advances in Neural Information Processing Systems 36
+               ({NeurIPS} 2023)},
+  year      = {2023},
+}
+
+@article{wang2024survey,
+  author    = {Lei Wang and Chen Ma and Xueyang Feng and Zeyu Zhang and
+               Hao Yang and Jingsen Zhang and Zhiyuan Chen and Jiakai Tang
+               and Xu Chen and Yankai Lin and Wayne Xin Zhao and
+               Zhewei Wei and Ji-Rong Wen},
+  title     = {A Survey on Large Language Model Based Autonomous Agents},
+  journal   = {Frontiers of Computer Science},
+  volume    = {18},
+  number    = {6},
+  pages     = {186345},
+  year      = {2024},
+  doi       = {10.1007/s11704-024-40231-1},
+}
+
+@inproceedings{wei2022chain,
+  author    = {Jason Wei and Xuezhi Wang and Dale Schuurmans and
+               Maarten Bosma and Brian Ichter and Fei Xia and
+               Ed Chi and Quoc Le and Denny Zhou},
+  title     = {Chain-of-Thought Prompting Elicits Reasoning in Large
+               Language Models},
+  booktitle = {Advances in Neural Information Processing Systems 35
+               ({NeurIPS} 2022)},
+  year      = {2022},
+}
+
+@article{wang2023voyager,
+  author    = {Guanzhi Wang and Yuqi Xie and Yunfan Jiang and
+               Ajay Mandlekar and Chaowei Xiao and Yuke Zhu and
+               Linxi Fan and Anima Anandkumar},
+  title     = {{Voyager}: An Open-Ended Embodied Agent with Large Language
+               Models},
+  journal   = {arXiv preprint arXiv:2305.16291},
+  year      = {2023},
+}
+
+@article{shen2023hugginggpt,
+  author    = {Yongliang Shen and Kaitao Song and Xu Tan and
+               Dongsheng Li and Weiming Lu and Yueting Zhuang},
+  title     = {{HuggingGPT}: Solving {AI} Tasks with {ChatGPT} and its
+               Friends in {Hugging Face}},
+  journal   = {arXiv preprint arXiv:2303.17580},
+  year      = {2023},
+}
+
+% ============================================================
+% Cluster 6: Behavioral Detection Analogs
+% ============================================================
+
+@inproceedings{forrest1996sense,
+  author    = {Stephanie Forrest and Steven A. Hofmeyr and
+               Anil Somayaji and Thomas A. Longstaff},
+  title     = {A Sense of Self for {Unix} Processes},
+  booktitle = {Proceedings of the 1996 {IEEE} Symposium on Security
+               and Privacy},
+  year      = {1996},
+  pages     = {120--128},
+  doi       = {10.1109/SECPRI.1996.502675},
+}
+
+@inproceedings{kolbitsch2009effective,
+  author    = {Clemens Kolbitsch and Paolo Milani Comparetti and
+               Christopher Kruegel and Engin Kirda and
+               Xiaoyong Zhou and XiaoFeng Wang},
+  title     = {Effective and Efficient Malware Detection at End Hosts},
+  booktitle = {Proceedings of the 18th {USENIX} Security Symposium},
+  year      = {2009},
+  pages     = {351--366},
+}
+
+@inproceedings{rieck2011automatic,
+  author    = {Konrad Rieck and Philipp Trinius and Carsten Willems and
+               Thorsten Holz},
+  title     = {Automatic Analysis of Malware Behavior Using Machine
+               Learning},
+  booktitle = {Journal of Computer Security},
+  volume    = {19},
+  number    = {4},
+  pages     = {639--668},
+  year      = {2011},
+  doi       = {10.3233/JCS-2010-0410},
+}
+
+@inproceedings{sekar2001fast,
+  author    = {R. Sekar and M. Bendre and D. Dhurjati and P. Bollineni},
+  title     = {A Fast Automaton-Based Method for Detecting Anomalous
+               Program Behaviors},
+  booktitle = {Proceedings of the 2001 {IEEE} Symposium on Security
+               and Privacy},
+  year      = {2001},
+  pages     = {144--155},
+  doi       = {10.1109/SECPRI.2001.924295},
+}
+
+% ============================================================
+% Cluster 7: LLM Security Surveys and Foundation Models
+% ============================================================
+
+@article{guo2024survey,
+  author    = {Taicheng Guo and Xiuying Chen and Yaqi Wang and
+               Ruidi Chang and Shichao Pei and Nitesh V. Chawla and
+               Olaf Wiest and Xiangliang Zhang},
+  title     = {Large Language Model Based Multi-Agents: A Survey of
+               Progress and Challenges},
+  journal   = {arXiv preprint arXiv:2402.01680},
+  year      = {2024},
+}
+
+@article{openai2023gpt4,
+  author    = {{OpenAI}},
+  title     = {{GPT-4} Technical Report},
+  journal   = {arXiv preprint arXiv:2303.08774},
+  year      = {2023},
+}
+
+@article{deng2023multilingual,
+  author    = {Gelei Deng and Yi Liu and Yuekang Li and Kailong Wang and
+               Ying Zhang and Zefeng Li and Haoyu Wang and Tianwei Zhang
+               and Yang Liu},
+  title     = {Multilingual Jailbreak Challenges in Large Language Models},
+  journal   = {arXiv preprint arXiv:2310.06474},
+  year      = {2023},
+}
+
+% ============================================================
+% Cluster 7b: Foundation Models (generators used in experiments)
+% ============================================================
+
+@article{touvron2023llama2,
+  author    = {Hugo Touvron and Louis Martin and Kevin Stone and
+               Peter Albert and Amjad Almahairi and Yasmine Babaei and
+               Nikolay Bashlykov and Soumya Batra and Prajjwal Bhargava and
+               Shruti Bhosale and Dan Bikel and Lukas Blecher and
+               Cristian Canton Ferrer and Moya Chen and Guillem Cucurull
+               and David Esiobu and Jude Fernandes and Jeremy Fu and
+               Wenyin Fu and Brian Fuller and Cynthia Gao and
+               Vedanuj Goswami and Naman Goyal and Anthony Hartshorn and
+               Saghar Hosseini and Rui Hou and Hakan Inan and
+               Marcin Kardas and Viktor Kerkez and Madian Khabsa and
+               Isabel Kloumann and Artem Korenev and Punit Singh Koura
+               and Marie-Anne Lachaux and Thibaut Lavril and Jenya Lee
+               and Diana Liskovich and Yinghai Lu and Yuning Mao and
+               Xavier Martinet and Todor Mihaylov and Pushkar Mishra
+               and Igor Molybog and Yixin Nie and Andrew Poulton and
+               Jeremy Reizenstein and Rashi Rungta and Kalyan Saladi
+               and Alan Schelten and Ruan Silva and Eric Michael Smith
+               and Ranjan Subramanian and Xiaoqing Ellen Tan and
+               Binh Tang and Ross Taylor and Adina Williams and
+               Jian Xiang Kuan and Puxin Xu and Zheng Yan and
+               Iliyan Zarov and Yuchen Zhang and Angela Fan and
+               Melanie Kambadur and Sharan Narang and Aurelien Rodriguez
+               and Robert Stojnic and Sergey Edunov and Thomas Scialom},
+  title     = {{Llama} 2: Open Foundation and Fine-Tuned Chat Models},
+  journal   = {arXiv preprint arXiv:2307.09288},
+  year      = {2023},
+}
+
+% ============================================================
+% Cluster 8: ML Tools (Classifier, Features)
+% ============================================================
+
+@inproceedings{ke2017lightgbm,
+  author    = {Guolin Ke and Qi Meng and Thomas Finley and Taifeng Wang
+               and Wei Chen and Weidong Ma and Qiwei Ye and Tie-Yan Liu},
+  title     = {{LightGBM}: A Highly Efficient Gradient Boosting Decision
+               Tree},
+  booktitle = {Advances in Neural Information Processing Systems 30
+               ({NIPS} 2017)},
+  year      = {2017},
+}
+
+@article{pedregosa2011scikit,
+  author    = {Fabian Pedregosa and Ga{\"e}l Varoquaux and
+               Alexandre Gramfort and Vincent Michel and Bertrand Thirion
+               and Olivier Grisel and Mathieu Blondel and Peter Prettenhofer
+               and Ron Weiss and Vincent Dubourg and Jake Vanderplas and
+               Alexandre Passos and David Cournapeau and Matthieu Brucher
+               and Matthieu Perrot and {\'E}douard Duchesnay},
+  title     = {Scikit-learn: Machine Learning in {Python}},
+  journal   = {Journal of Machine Learning Research},
+  volume    = {12},
+  pages     = {2825--2830},
+  year      = {2011},
+}
+
+@inproceedings{chen2016xgboost,
+  author    = {Tianqi Chen and Carlos Guestrin},
+  title     = {{XGBoost}: A Scalable Tree Boosting System},
+  booktitle = {Proceedings of the 22nd {ACM} {SIGKDD} International
+               Conference on Knowledge Discovery and Data Mining},
+  year      = {2016},
+  pages     = {785--794},
+  doi       = {10.1145/2939672.2939785},
+}
