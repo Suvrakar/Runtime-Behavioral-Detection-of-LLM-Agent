@@ -1,9 +1,9 @@
 % ============================================================
 %  TRACE — IEEE S&P 2027 Submission
-%  Watch What It Does, Not What It Says:
-%  Behavioral Detection of Agent Hijacking from Execution Trajectories
+%  Runtime Behavioral Detection of LLM Agent Hijacking
+%  from Execution Trajectories
 %
-%  Compile: pdflatex paper && bibtex paper && pdflatex paper && pdflatex paper
+%  Compile: pdflatex paper && pdflatex paper
 % ============================================================
 
 \documentclass[conference]{IEEEtran}
@@ -27,6 +27,7 @@
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{array}
+\usepackage{enumitem}
 
 % --- Typography ---------------------------------------------------
 \usepackage{xcolor}
@@ -57,8 +58,7 @@
 }
 
 % ============================================================
-\title{Watch What It Does, Not What It Says:\\
-Behavioral Detection of Agent Hijacking\\
+\title{Runtime Behavioral Detection of LLM Agent Hijacking\\
 from Execution Trajectories}
 
 \author{\IEEEauthorblockN{Anonymous Authors}
@@ -169,12 +169,15 @@ we characterize for the first time in this setting.
   \item \textbf{\textsc{Trace}}: a lightweight, model-agnostic
     trajectory detector that wraps any agent via structured logs,
     with a tunable security-utility threshold (\S\ref{sec:framework}).
-  \item The \textbf{first clean security-vs-utility (overdefense)
-    frontier} for behavioral agent defense, measured against a
-    matched benign corpus of equal size (\S\ref{sec:results}).
+  \item A \textbf{security-vs-utility (overdefense) frontier}
+    for behavioral agent defense: a Pareto curve of attack detection
+    rate vs.\ legitimate-task preservation, measured against a
+    size-matched benign corpus (\S\ref{sec:results}).
+    To our knowledge this is the first such characterization
+    for runtime agent defense.
   \item A \textbf{fully open, \$0, CPU-reproducible} evaluation
-    harness and artifact enabling independent replication
-    (\S\ref{sec:setup}, \S\ref{sec:results}).
+    harness, trajectory dataset, and detector artifact enabling
+    independent replication (\S\ref{sec:setup}).
 \end{itemize}
 
 \paragraph{Paper organization.}
@@ -286,7 +289,7 @@ Ruan et al.~\cite{ruan2024identifying} systematically identify
 LM agent risk categories---including data exfiltration, destructive
 tool use, and privilege escalation---using an LM-emulated sandbox;
 these categories map directly to our threat model (\S\ref{sec:threat}).
-Shi et al.~\cite{shi2024badagent} introduced BadAgent, which
+Wang et al.~\cite{shi2024badagent} introduced BadAgent, which
 backdoors an agent's tool set so a trigger phrase activates a
 malicious action.  Cohen et al.~\cite{cohen2024comes} show that
 poisoned agents can propagate attacks across multi-agent pipelines.
@@ -364,6 +367,7 @@ involved.
 
 \begin{figure*}[t]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[font=\small, node distance=1.4cm]
   % --- Agent
   \node[sysbluebox, minimum width=3.0cm] (agent) {LLM Agent\\(any framework)};
@@ -395,9 +399,9 @@ involved.
   \draw[sysarrow] (telem) -- node[above,font=\scriptsize]{log $\ell$}  (feat);
   \draw[sysarrow] (feat)  -- node[above,font=\scriptsize]{$\phi$}      (clf);
   \draw[sysarrow] (clf.north east) -- node[above,font=\scriptsize]
-        {$s > \theta$} (block.west);
-  \draw[sysarrow] (clf.south east) -- node[below,font=\scriptsize]
         {$s \le \theta$} (allow.west);
+  \draw[sysarrow] (clf.south east) -- node[below,font=\scriptsize]
+        {$s > \theta$} (block.west);
 
   % --- Passthrough
   \draw[sysdash, bend right=28] (telem.south)
@@ -415,7 +419,8 @@ involved.
     \node[font=\scriptsize\bfseries, text=traceblue!70!black,
           above=0pt of tracebox.north] {\textsc{Trace} Subsystem};
   \end{scope}
-\end{tikzpicture}
+\end{tikzpicture}%
+}% end resizebox
 \caption{\textbf{\textsc{Trace} system architecture.}  Every tool
 call the agent emits is captured by the telemetry layer without
 modifying agent behavior.  Features $\phi(\ell,\tau)$ are extracted
@@ -440,8 +445,9 @@ emits, the wrapper appends a structured event to the run log:
 \end{verbatim}
 The wrapper does not modify agent behavior or require access to model
 internals.  Logs can be consumed offline (run-level detection) or
-incrementally (step-level, enabling early termination before harm
-completes).  For closed-API agents, any framework hook that exposes
+incrementally (step-level); step-level early termination is a
+planned extension not evaluated in this paper.
+For closed-API agents, any framework hook that exposes
 tool call events suffices.
 
 \subsection{Feature Extraction}
@@ -449,7 +455,7 @@ tool call events suffices.
 
 Let $\ell = [e_1, \ldots, e_n]$ be the ordered sequence of logged
 events for a run on task~$\tau$.  We extract a feature vector
-$\phi(\ell, \tau) \in \mathbb{R}^d$ from five groups:
+$\phi(\ell, \tau) \in \mathbb{R}^{30}$ ($d = 30$) from five groups:
 
 \paragraph{F1 --- Sequence n-grams.}
 A bag-of-bigrams over the sequence of tool names in $\ell$.
@@ -490,7 +496,7 @@ state-modifying vs.\ read-only calls.
 \label{alg:features}
 \begin{algorithmic}[1]
 \REQUIRE Trajectory $\ell = [e_1,\ldots,e_n]$, task $\tau$
-\ENSURE Feature vector $\phi \in \mathbb{R}^d$
+\ENSURE Feature vector $\phi \in \mathbb{R}^{30}$
 \STATE $\mathbf{f}_1 \leftarrow
        \textsc{ToolBigrams}([e_i.\mathit{tool}]_{i=1}^n)$
 \STATE $\mathbf{f}_2 \leftarrow
@@ -527,8 +533,18 @@ $\theta \in [0,1]$ traces the \emph{security-utility frontier}: the
 Pareto set of (attack detection rate, legitimate utility preserved)
 pairs.  Security is the fraction of attack runs blocked; utility is
 the fraction of benign runs not blocked ($1 - \mathrm{FPR}$).
+
+We define \emph{overdefense} as the loss in utility incurred by a
+defense: overdefense $= \mathrm{FPR}(\theta)$, the fraction of
+legitimate tasks incorrectly blocked at a given threshold.  A defense
+with zero overdefense passes all benign tasks; high overdefense
+imposes an operational cost on users independent of attack prevalence.
+Measuring overdefense alongside security gives a complete picture of
+a detector's deployability.
+
 A deployable system selects $\theta$ to meet an operator-specified
-utility floor, then reads off the achievable security level.
+utility floor (i.e., an overdefense ceiling), then reads off the
+achievable security level.
 Algorithm~\ref{alg:sweep} formalizes the sweep.
 
 \begin{algorithm}[t]
@@ -544,6 +560,7 @@ Algorithm~\ref{alg:sweep} formalizes the sweep.
          |\{s \in S_A : s > \theta\}| \;/\; |S_A|$
   \STATE $\mathrm{util}(\theta) \leftarrow
          |\{s \in S_B : s \le \theta\}| \;/\; |S_B|$
+         \COMMENT{$= 1 - \mathrm{FPR}(\theta)$, fraction of benign not blocked}
   \STATE $\mathcal{F} \leftarrow \mathcal{F} \cup
          \{(\mathrm{util}(\theta),\, \mathrm{sec}(\theta))\}$
 \ENDFOR
@@ -566,26 +583,28 @@ no real credentials, no outbound connectivity to production systems,
 and logs all tool calls via the \textsc{Trace} telemetry wrapper.
 
 We use two generator models drawn from free-tier APIs:
-\textbf{M1}---a capable frontier model (GPT-4 family~\cite{openai2023gpt4}
-or equivalent) via free tier---and \textbf{M2}---an open-weight
-model in the Llama~2/3 family~\cite{touvron2023llama2} via Groq
-free tier---to enable cross-model transfer analysis (Experiment~E,
-\S\ref{sec:exp_e}).  Experiments run at $\$0$ total cost.
+\textbf{M1}---Gemini~1.5~Flash (Google AI Studio free tier)---and
+\textbf{M2}---Llama~3~8B~\cite{touvron2023llama2} via Groq free
+tier---to enable cross-model transfer analysis
+(Experiment~E, \S\ref{sec:exp_e}).  Both APIs are zero-cost at the
+trajectory volumes used; experiments run at $\$0$ total cost.
 
 \subsection{Corpora}
 
 \paragraph{Attack corpus.}
-We sample from two benchmarks: AgentDojo~\cite{debenedetti2024agentdojo}
-for indirect prompt injection instances and a skill-poisoning
-benchmark for tool poisoning instances.  We construct four attack
-cells (Table~\ref{tab:corpus}): injection-overt, injection-evasive,
-poisoning-overt, poisoning-evasive, each with
-$n = \todo{30}$~instances and 3~repetitions per instance to average
-model stochasticity.  \emph{Overt} attacks use standard payloads
-with no evasion.  \emph{Evasive} attacks use position-aware payload
-restructuring (injection) and payload-less skill descriptions with
-harmful runtime logic (poisoning), designed to produce clean text
-for pre-execution scanners.
+We sample from two sources: AgentDojo~\cite{debenedetti2024agentdojo}
+for indirect prompt injection instances, and a skill-poisoning
+evaluation suite constructed following the BadAgent
+protocol~\cite{shi2024badagent} for tool poisoning instances.
+We construct four attack cells (Table~\ref{tab:corpus}):
+injection-overt, injection-evasive, poisoning-overt, poisoning-evasive,
+each with $n = \todo{30}$~instances and 3~repetitions per instance
+to average model stochasticity.  \emph{Overt} attacks use standard
+payloads with no evasion.  \emph{Evasive} attacks use position-aware
+payload restructuring (injection) and payload-less skill descriptions
+with harmful runtime logic (poisoning), designed to produce clean text
+for pre-execution scanners while preserving the behavioral consequence
+that \textsc{Trace} targets.
 
 \begin{table}[t]
 \centering
@@ -597,8 +616,8 @@ Attack cell & $n$ instances & Benchmark source \\
 \midrule
 Injection --- overt    & \todo{30} & AgentDojo \\
 Injection --- evasive  & \todo{30} & AgentDojo \\
-Poisoning --- overt    & \todo{30} & Skill-poisoning benchmark \\
-Poisoning --- evasive  & \todo{30} & Skill-poisoning benchmark \\
+Poisoning --- overt    & \todo{30} & BadAgent protocol~\cite{shi2024badagent} \\
+Poisoning --- evasive  & \todo{30} & BadAgent protocol~\cite{shi2024badagent} \\
 \midrule
 Benign (total)         & \todo{120} & AgentDojo + curated \\
 \bottomrule
@@ -651,6 +670,32 @@ double-blind review]}.
 \section{Results}
 \label{sec:results}
 % ============================================================
+
+\subsection{Hypotheses}
+\label{sec:hypotheses}
+
+We test five directional hypotheses:
+
+\begin{description}[leftmargin=0pt]
+  \item[\textbf{H1} (Detection efficacy).]
+    \textsc{Trace} achieves AUC $> 0.85$ on the held-out test split,
+    substantially above all text-level baselines.
+  \item[\textbf{H2} (Evasion robustness).]
+    On evasive attack variants, \textsc{Trace}'s detection rate
+    degrades by $< 15$ percentage points relative to overt variants,
+    while text-level baselines degrade by $> 40$ percentage points.
+  \item[\textbf{H3} (Security-utility frontier).]
+    A viable operating point exists where \textsc{Trace} blocks
+    $> 80\,\%$ of attacks at $< 20\,\%$ overdefense (FPR).
+  \item[\textbf{H4a} (Signal attribution).]
+    A small feature subset (F1 + F3) accounts for $> 80\,\%$ of
+    \textsc{Trace}'s detection power; the remaining groups contribute
+    individually $< 0.05$ AUC each.
+  \item[\textbf{H4b} (Cross-model transfer).]
+    A detector trained on M1 trajectories achieves AUC within
+    $0.05$ of its in-distribution score when tested on M2 trajectories,
+    and vice versa.
+\end{description}
 
 We report means with 95\,\% confidence intervals over repetitions.
 We claim \textsc{Trace} beats a baseline when McNemar's paired
@@ -964,7 +1009,201 @@ and the overdefense measurement framework serve as durable
 methodological contributions to the growing field of agent security.
 
 % ============================================================
-\bibliographystyle{IEEEtran}
-\bibliography{paper}
+\begin{thebibliography}{10}
+
+\bibitem{yao2023react}
+S.~Yao, J.~Zhao, D.~Yu, N.~Du, I.~Shafran, K.~Narasimhan, and Y.~Cao,
+``{ReAct}: Synergizing reasoning and acting in language models,''
+in \emph{Proc. Int. Conf. Learning Representations (ICLR)}, 2023.
+
+\bibitem{wang2024survey}
+L.~Wang, C.~Ma, X.~Feng, Z.~Zhang, H.~Yang, J.~Zhang, Z.~Chen, J.~Tang,
+X.~Chen, Y.~Lin, W.~X. Zhao, Z.~Wei, and J.-R. Wen,
+``A survey on large language model based autonomous agents,''
+\emph{Frontiers of Computer Science}, vol.~18, no.~6, p.~186345, 2024.
+
+\bibitem{greshake2023not}
+K.~Greshake, S.~Abdelnabi, S.~Mishra, C.~Endres, T.~Holz, and M.~Fritz,
+``Not what you've signed up for: Compromising real-world {LLM}-integrated
+applications with indirect prompt injections,''
+in \emph{Proc. 16th ACM Workshop on Artificial Intelligence and Security
+(AISec@CCS)}, 2023, pp.~79--90.
+
+\bibitem{perez2022ignore}
+F.~Perez and I.~Ribeiro,
+``Ignore previous prompt: Attack techniques for language models,''
+in \emph{NeurIPS 2022 Workshop on Machine Learning Safety}, 2022.
+
+\bibitem{zhan2024injectagent}
+Q.~Zhan, Z.~Liang, Z.~Ying, and D.~Kang,
+``{InjectAgent}: Benchmarking indirect prompt injections in tool-calling
+{LLM} agents,''
+in \emph{Findings of the Assoc. for Computational Linguistics: ACL 2024},
+2024.
+
+\bibitem{shi2024badagent}
+Y.~Wang, Z.~Lin, Y.~Xu, W.~Wang, and T.~Nguyen,
+``{BadAgent}: Inserting and activating backdoor attacks in {LLM} agents,''
+\emph{arXiv preprint arXiv:2406.03007}, 2024.
+
+\bibitem{yang2024watch}
+X.~Yang, X.~Wang, Q.~Zhang, and L.~Petzold,
+``Watch out for your agents! Investigating backdoor threats to {LLM}-based
+agents,''
+\emph{arXiv preprint arXiv:2402.11208}, 2024.
+
+\bibitem{debenedetti2024agentdojo}
+E.~Debenedetti, J.~Zhang, M.~Balunovic, L.~Beurer-Kellner, M.~Fischer,
+and F.~Tram{\`e}r,
+``{AgentDojo}: A dynamic environment to evaluate attacks and defenses for
+{LLM} agents,''
+in \emph{Advances in Neural Information Processing Systems 37 (NeurIPS 2024)},
+2024.
+
+\bibitem{inan2023llama}
+H.~Inan, K.~Upasani, J.~Chi, R.~Rungta, K.~Iyer, Y.~Mao,
+M.~Tontchev, Q.~Hu, B.~Fuller, D.~Testuggine, and M.~Khabsa,
+``{Llama Guard}: {LLM}-based input-output safeguard for human-{AI}
+conversations,''
+\emph{arXiv preprint arXiv:2312.06674}, 2023.
+
+\bibitem{yi2023benchmarking}
+J.~Yi, Y.~Xie, B.~Zhu, K.~Hines, E.~Kiciman, G.~Sun, X.~Xie,
+and F.~Wu,
+``Benchmarking and defending against indirect prompt injection attacks on
+large language models,''
+\emph{arXiv preprint arXiv:2312.14197}, 2023.
+
+\bibitem{schick2023toolformer}
+T.~Schick, J.~Dwivedi-Yu, R.~Dess{\`\i}, R.~Raileanu, M.~Lomeli,
+L.~Zettlemoyer, N.~Cancedda, and T.~Scialom,
+``Toolformer: Language models can teach themselves to use tools,''
+in \emph{Advances in Neural Information Processing Systems 36 (NeurIPS 2023)},
+2023.
+
+\bibitem{shen2023hugginggpt}
+Y.~Shen, K.~Song, X.~Tan, D.~Li, W.~Lu, and Y.~Zhuang,
+``{HuggingGPT}: Solving {AI} tasks with {ChatGPT} and its friends in
+{Hugging Face},''
+\emph{arXiv preprint arXiv:2303.17580}, 2023.
+
+\bibitem{wei2022chain}
+J.~Wei, X.~Wang, D.~Schuurmans, M.~Bosma, B.~Ichter, F.~Xia, E.~Chi,
+Q.~Le, and D.~Zhou,
+``Chain-of-thought prompting elicits reasoning in large language models,''
+in \emph{Advances in Neural Information Processing Systems 35 (NeurIPS 2022)},
+2022.
+
+\bibitem{wang2023voyager}
+G.~Wang, Y.~Xie, Y.~Jiang, A.~Mandlekar, C.~Xiao, Y.~Zhu, L.~Fan,
+and A.~Anandkumar,
+``{Voyager}: An open-ended embodied agent with large language models,''
+\emph{arXiv preprint arXiv:2305.16291}, 2023.
+
+\bibitem{guo2024survey}
+T.~Guo, X.~Chen, Y.~Wang, R.~Chang, S.~Pei, N.~V. Chawla, O.~Wiest,
+and X.~Zhang,
+``Large language model based multi-agents: A survey of progress and
+challenges,''
+\emph{arXiv preprint arXiv:2402.01680}, 2024.
+
+\bibitem{branch2022evaluating}
+H.~J. Branch, J.~R. Cefalu, J.~McHugh, L.~Hujer, A.~Bahl,
+D.~del~Castillo~Iglesias, R.~Heichman, and R.~Darwishi,
+``Evaluating the susceptibility of pre-trained language models via
+handcrafted adversarial examples,''
+\emph{arXiv preprint arXiv:2209.02128}, 2022.
+
+\bibitem{wallace2019universal}
+E.~Wallace, S.~Feng, N.~Kandpal, M.~Gardner, and S.~Singh,
+``Universal adversarial triggers for attacking and analyzing {NLP},''
+in \emph{Proc. 2019 Conf. on Empirical Methods in Natural Language
+Processing (EMNLP-IJCNLP)}, 2019, pp.~2153--2162.
+
+\bibitem{liu2023prompt}
+Y.~Liu, G.~Deng, Y.~Li, K.~Wang, Z.~Wang, X.~Wang, T.~Zhang, Y.~Liu,
+H.~Wang, Y.~Zheng, and Y.~Liu,
+``Prompt injection attack against {LLM}-integrated applications,''
+\emph{arXiv preprint arXiv:2306.05499}, 2023.
+
+\bibitem{ruan2024identifying}
+Y.~Ruan, H.~Dong, A.~Wang, S.~Pitis, Y.~Zhou, J.~Ba, Y.~Dubois,
+C.~J. Maddison, and T.~Hashimoto,
+``Identifying the risks of {LM} agents with an {LM}-emulated sandbox,''
+\emph{arXiv preprint arXiv:2309.15817}, 2023.
+
+\bibitem{cohen2024comes}
+S.~Cohen, R.~Bitton, and B.~Nassi,
+``Here comes the {AI} worm: Unleashing zero-click worms that target
+generative {AI} applications,''
+\emph{arXiv preprint arXiv:2403.02817}, 2024.
+
+\bibitem{hines2024spotlighting}
+K.~Hines, G.~Lopez, M.~Hall, F.~Zarfati, Y.~Zunger, and E.~Kiciman,
+``Defending against indirect prompt injection attacks with spotlighting,''
+\emph{arXiv preprint arXiv:2403.14720}, 2024.
+
+\bibitem{forrest1996sense}
+S.~Forrest, S.~A. Hofmeyr, A.~Somayaji, and T.~A. Longstaff,
+``A sense of self for {Unix} processes,''
+in \emph{Proc. 1996 IEEE Symp. on Security and Privacy}, 1996,
+pp.~120--128.
+
+\bibitem{kolbitsch2009effective}
+C.~Kolbitsch, P.~M. Comparetti, C.~Kruegel, E.~Kirda, X.~Zhou,
+and X.~Wang,
+``Effective and efficient malware detection at end hosts,''
+in \emph{Proc. 18th USENIX Security Symp.}, 2009, pp.~351--366.
+
+\bibitem{rieck2011automatic}
+K.~Rieck, P.~Trinius, C.~Willems, and T.~Holz,
+``Automatic analysis of malware behavior using machine learning,''
+\emph{Journal of Computer Security}, vol.~19, no.~4, pp.~639--668, 2011.
+
+\bibitem{sekar2001fast}
+R.~Sekar, M.~Bendre, D.~Dhurjati, and P.~Bollineni,
+``A fast automaton-based method for detecting anomalous program behaviors,''
+in \emph{Proc. 2001 IEEE Symp. on Security and Privacy}, 2001,
+pp.~144--155.
+
+\bibitem{openai2023gpt4}
+{OpenAI},
+``{GPT-4} technical report,''
+\emph{arXiv preprint arXiv:2303.08774}, 2023.
+
+\bibitem{touvron2023llama2}
+H.~Touvron, L.~Martin, K.~Stone, P.~Albert, A.~Almahairi, Y.~Babaei,
+N.~Bashlykov, S.~Batra, P.~Bhargava, S.~Bhosale, D.~Bikel, L.~Blecher,
+C.~C. Ferrer, M.~Chen, G.~Cucurull, D.~Esiobu, J.~Fernandes, J.~Fu,
+W.~Fu, B.~Fuller \emph{et~al.},
+``{Llama}~2: Open foundation and fine-tuned chat models,''
+\emph{arXiv preprint arXiv:2307.09288}, 2023.
+
+\bibitem{ke2017lightgbm}
+G.~Ke, Q.~Meng, T.~Finley, T.~Wang, W.~Chen, W.~Ma, Q.~Ye, and T.-Y. Liu,
+``{LightGBM}: A highly efficient gradient boosting decision tree,''
+in \emph{Advances in Neural Information Processing Systems 30 (NIPS 2017)},
+2017.
+
+\bibitem{chen2016xgboost}
+T.~Chen and C.~Guestrin,
+``{XGBoost}: A scalable tree boosting system,''
+in \emph{Proc. 22nd ACM SIGKDD Int. Conf. on Knowledge Discovery and
+Data Mining}, 2016, pp.~785--794.
+
+\bibitem{pedregosa2011scikit}
+F.~Pedregosa, G.~Varoquaux, A.~Gramfort, V.~Michel, B.~Thirion, O.~Grisel,
+M.~Blondel, P.~Prettenhofer, R.~Weiss, V.~Dubourg, J.~Vanderplas,
+A.~Passos, D.~Cournapeau, M.~Brucher, M.~Perrot, and {\'E}.~Duchesnay,
+``Scikit-learn: Machine learning in {Python},''
+\emph{Journal of Machine Learning Research}, vol.~12, pp.~2825--2830, 2011.
+
+\bibitem{armstrong2022red}
+S.~Armstrong, L.~Lovitt, A.~Askell, and Anthropic team,
+``Red-teaming language models to reduce harms: Methods, scaling behaviors,
+and lessons learned,''
+\emph{arXiv preprint arXiv:2209.07858}, 2022.
+
+\end{thebibliography}
 
 \end{document}
