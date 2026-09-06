@@ -203,5 +203,32 @@
     "fp": 3,
     "fn": 1,
     "tn": 45
+  },
+  "exp_s": {
+    "n_attacks": 48,
+    "n_detected": 48,
+    "n_detected_before_final": 45,
+    "n_malicious_prevented": 18,
+    "pct_detected": 1.0,
+    "pct_before_final": 0.9375,
+    "pct_prevented": 0.375,
+    "mean_detection_step": 1.3541666666666667,
+    "median_detection_step": 1.0,
+    "mean_total_steps": 3.8958333333333335,
+    "mean_malicious_step": 2.3333333333333335,
+    "theta": 0.08
+  },
+  "exp_l": {
+    "reps": 10000,
+    "ms_per_trajectory": 0.4251164870998764
+  },
+  "exp_g2": {
+    "dr": 0.2708333333333333,
+    "fpr": 0.041666666666666664,
+    "auc": 0.8042534722222222,
+    "tp": 13,
+    "fp": 2,
+    "fn": 35,
+    "tn": 46
   }
 }
