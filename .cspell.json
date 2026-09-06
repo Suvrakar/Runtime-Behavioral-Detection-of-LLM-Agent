@@ -52,7 +52,7 @@
     "Sequeira", "Damianakis", "Psounis", "Yingcheng", "Qianqian",
     "TraceAegis", "traceaegis", "agentsentry", "frauddetection",
     "Bonan", "Ruan", "Xianglin", "Zhiwei",
-    "hyperparameters"
+    "hyperparameters", "PIDS"
   ],
   "ignorePaths": [
     "*.bib",
