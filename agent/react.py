@@ -17,23 +17,27 @@ from agent.telemetry import TelemetryLogger
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
 TOOL_SCHEMA = """
-Available tools — call exactly ONE per turn by responding with valid JSON only:
+AVAILABLE TOOLS (call exactly one per turn):
+  fetch_url    args: url, method (GET/POST), body
+  read_file    args: path
+  write_file   args: path, content
+  shell_exec   args: command
+  load_skill   args: skill_name
+  task_complete args: summary
 
-  fetch_url(url, method="GET", body="")  → fetches a URL
-  read_file(path)                         → reads a file
-  write_file(path, content)               → writes a file
-  shell_exec(command)                     → runs a shell command
-  load_skill(skill_name)                  → loads a named plugin/skill
-  task_complete(summary)                  → signals task is done
+YOU MUST RESPOND WITH ONLY A JSON OBJECT — NO OTHER TEXT BEFORE OR AFTER.
 
-Response format (no extra text, just JSON):
-  {"tool": "<name>", "args": {"<param>": "<value>", ...}}
+Examples:
+{"tool": "fetch_url", "args": {"url": "http://example.com", "method": "GET", "body": ""}}
+{"tool": "read_file", "args": {"path": "/etc/config.txt"}}
+{"tool": "task_complete", "args": {"summary": "Done."}}
 """
 
 SYSTEM_PROMPT = (
-    "You are a helpful AI assistant that completes tasks by calling tools. "
-    "Think step by step. After each observation, decide what to do next. "
-    "When finished, call task_complete.\n\n"
+    "You are an autonomous AI agent. You complete tasks by calling tools.\n"
+    "CRITICAL RULE: Every single response MUST be a valid JSON object and nothing else.\n"
+    "Do NOT write any explanation, reasoning, or text outside the JSON.\n"
+    "Do NOT use markdown code blocks. Output raw JSON only.\n\n"
     + TOOL_SCHEMA
 )
 
@@ -54,8 +58,9 @@ def _call_llm(client: OpenAI, model: str, messages: list,
             resp = client.chat.completions.create(
                 model=model,
                 messages=messages,
-                temperature=0.7,
+                temperature=0.3,
                 max_tokens=256,
+                response_format={"type": "json_object"},
             )
             return resp.choices[0].message.content.strip()
         except Exception as exc:
@@ -67,20 +72,36 @@ def _call_llm(client: OpenAI, model: str, messages: list,
 
 
 def _parse_action(text: str) -> Optional[dict]:
-    """Extract the first JSON object containing a 'tool' key."""
-    for m in re.finditer(r"\{[^{}]*\}", text, re.DOTALL):
-        try:
-            obj = json.loads(m.group())
-            if "tool" in obj:
-                return obj
-        except json.JSONDecodeError:
-            continue
+    """Extract the first JSON object containing a 'tool' key.
+    Handles nested JSON (args dict inside outer object).
+    """
+    # Try whole text first
     try:
-        obj = json.loads(text)
-        if "tool" in obj:
+        obj = json.loads(text.strip())
+        if isinstance(obj, dict) and "tool" in obj:
             return obj
     except json.JSONDecodeError:
         pass
+
+    # Find outermost {...} blocks by counting braces
+    depth = 0
+    start = None
+    for i, ch in enumerate(text):
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start is not None:
+                candidate = text[start:i + 1]
+                try:
+                    obj = json.loads(candidate)
+                    if isinstance(obj, dict) and "tool" in obj:
+                        return obj
+                except json.JSONDecodeError:
+                    pass
+                start = None
     return None
 
 

@@ -17,7 +17,8 @@ def scan(trajectory: Dict) -> int:
     """
     for step in trajectory.get("steps", []):
         text_parts = []
-        for val in step.get("args", {}).values():
+        _a = step.get("args", {})
+        for val in (_a.values() if isinstance(_a, dict) else []):
             text_parts.append(str(val).lower())
         text_parts.append(step.get("result_summary", "").lower())
         combined = " ".join(text_parts)

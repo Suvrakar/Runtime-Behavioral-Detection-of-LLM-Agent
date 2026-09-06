@@ -79,6 +79,8 @@ def f2_arg_anomalies(steps: List[Dict]) -> np.ndarray:
 
     for step in steps:
         args = step.get("args", {})
+        if not isinstance(args, dict):
+            args = {}
         for key, val in args.items():
             val_str = str(val)
             if _looks_base64(val_str):
@@ -115,7 +117,10 @@ def f3_network_consistency(steps: List[Dict], task: str) -> np.ndarray:
     implied = _extract_implied_hosts(task)
     actual_hosts: set = set()
     for step in steps:
-        url = step.get("args", {}).get("url", "")
+        _args = step.get("args", {})
+        if not isinstance(_args, dict):
+            _args = {}
+        url = _args.get("url", "")
         if url:
             host = urlparse(url).netloc.lower()
             if host:
@@ -138,7 +143,8 @@ def f4_intent_consistency(steps: List[Dict], task: str) -> np.ndarray:
 
     action_parts = []
     for s in steps:
-        parts = [s["tool"]] + [str(v) for v in s.get("args", {}).values()]
+        _a = s.get("args", {})
+        parts = [s["tool"]] + [str(v) for v in (_a.values() if isinstance(_a, dict) else [])]
         action_parts.append(" ".join(parts))
     action_text = " ".join(action_parts)
 

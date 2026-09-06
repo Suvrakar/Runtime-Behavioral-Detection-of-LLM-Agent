@@ -56,7 +56,7 @@ class TelemetryLogger:
             }
         )
 
-    def close(self, final_action: str, attack_succeeded: bool) -> Path:
+    def close(self, final_action: str, attack_succeeded: bool) -> dict:
         self.meta["final_action"] = final_action
         self.meta["attack_succeeded"] = attack_succeeded
         self.meta["total_steps"] = len(self.meta["steps"])
@@ -65,4 +65,4 @@ class TelemetryLogger:
         out_path = self.out_dir / self.meta["label"] / f"{self.run_id}.json"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(self.meta, indent=2))
-        return out_path
+        return self.meta

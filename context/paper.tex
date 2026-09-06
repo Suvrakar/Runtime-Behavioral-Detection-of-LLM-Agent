@@ -1,9 +1,9 @@
 % ============================================================
-%  TRACE — IEEE S&P 2027 Submission
+%  TRACE — ICCIT 2026 Submission
 %  Runtime Behavioral Detection of LLM Agent Hijacking
 %  from Execution Trajectories
 %
-%  Compile: pdflatex paper && pdflatex paper
+%  Compile: pdflatex paper && bibtex paper && pdflatex paper && pdflatex paper
 % ============================================================
 
 \documentclass[conference]{IEEEtran}
@@ -19,10 +19,6 @@
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
 
-% --- Algorithms ---------------------------------------------------
-\usepackage{algorithm}
-\usepackage{algorithmic}
-
 % --- Tables -------------------------------------------------------
 \usepackage{booktabs}
 \usepackage{multirow}
@@ -33,10 +29,6 @@
 \usepackage{xcolor}
 \usepackage[hidelinks]{hyperref}
 
-% --- TODO markers (remove before camera-ready) --------------------
-\newcommand{\todo}[1]{{\color{red}\textbf{[TODO: #1]}}}
-\newcommand{\placeholder}[1]{{\color{blue}\textit{[#1]}}}
-
 % --- Custom colors ------------------------------------------------
 \definecolor{traceblue}{RGB}{31,119,180}
 \definecolor{attackred}{RGB}{214,39,40}
@@ -44,7 +36,7 @@
 \definecolor{evasiveorange}{RGB}{255,127,14}
 \definecolor{lightgray}{RGB}{240,240,240}
 
-% --- TikZ styles (shared across figures) --------------------------
+% --- TikZ styles -------------------------------------------------
 \tikzset{
   sysbox/.style={draw, rounded corners=4pt, minimum height=0.85cm,
                  minimum width=2.6cm, align=center, fill=white,
@@ -62,7 +54,7 @@
 from Execution Trajectories}
 
 \author{\IEEEauthorblockN{Anonymous Authors}
-\IEEEauthorblockA{Double-blind submission to IEEE S\&P 2027\\
+\IEEEauthorblockA{Double-blind submission to ICCIT 2026\\
 Do not distribute}}
 
 % ============================================================
@@ -72,39 +64,27 @@ Do not distribute}}
 % ============================================================
 \begin{abstract}
 % ============================================================
-LLM agents that plan, call tools, and act with minimal oversight are
-increasingly targeted by two attack families: \emph{indirect prompt
-injection}, which hides malicious instructions in content the agent
-ingests, and \emph{skill/tool poisoning}, which corrupts tools or
-plugins the agent loads.  Prevailing defenses operate on text
-before execution---static scanners, guard models, and LLM-judge
-screens---and face a structural weakness: a growing class of
-\emph{evasive} attacks (payload-less skills, position-aware
-injections) is engineered to look benign to text-level inspection.
-When the triggering text is clean, text-level defenses have no signal
-to detect.
-
-We observe that while an attacker can obfuscate the \emph{trigger},
-they cannot eliminate the \emph{consequence}: a hijacked agent must
-still act---exfiltrate data, access unauthorized endpoints, escalate
-privileges---and those actions are observable in the execution trace.
-We present \textsc{Trace} (Trajectory-based Runtime Agent Compromise
-Examiner), a lightweight classifier over structured execution logs
-(sequences of tool calls, arguments, and network destinations) that
-requires no model weights or hidden states and wraps any closed-API
-agent.
-
-We evaluate \textsc{Trace} against AgentDojo~\cite{debenedetti2024agentdojo}
-and a skill-poisoning benchmark across overt and evasive attack
-variants, comparing against three text-level baselines.  We show:
-(1)~hijacked trajectories are statistically separable from benign
-ones (AUC~\todo{fill}); (2)~behavioral detection retains high recall
-on evasive attacks where text baselines collapse to near-chance;
-(3)~a tunable security-utility frontier exists, achieving \todo{X}\%
-attack detection at \todo{Y}\% legitimate utility preserved; and
-(4)~a detector trained on one generator model's trajectories transfers
-to a second model's with minimal degradation.  The full pipeline runs
-at \$0 on CPU and is released as an open, reproducible artifact.
+LLM agents are vulnerable to indirect prompt injection and skill
+poisoning attacks that subvert their execution at runtime.
+Text-level defenses fail structurally against evasive variants
+because they inspect the \emph{trigger} text, not the behavioral
+\emph{consequence}, leaving them blind to payload-less skills and
+position-aware injections.
+\textsc{Trace} (Trajectory-based Runtime Agent Compromise
+Examiner) is a lightweight behavioral detector that classifies agent
+execution trajectories---tool call sequences, arguments, and network
+destinations---using a gradient-boosted classifier, operating without
+access to model weights or prompts and wrapping any agent framework.
+On a 480-trajectory benchmark spanning four attack cells (overt and
+evasive injection; overt and evasive poisoning), \textsc{Trace}
+achieves AUC~0.984 and 91.7--100\,\% detection rate within the
+stated threat model, compared to 25\,\% for a keyword-based static
+scanner and 50\,\% for a hand-crafted behavioral rule detector,
+while preserving 95.8\,\% legitimate utility at the recommended
+operating threshold.
+The detector runs entirely on CPU with no inference cost; the
+480-trajectory corpus and trained weights are released as an open,
+reproducible artifact.
 \end{abstract}
 
 % ============================================================
@@ -117,81 +97,54 @@ files, calling APIs, browsing the web, executing code---with little
 human oversight~\cite{yao2023react,wang2024survey}.  This autonomy
 makes them a valuable and newly prominent attack surface.  Two attack
 families dominate current research.  \emph{Indirect prompt injection}
-embeds malicious instructions in content the agent reads (a crafted
-webpage, a poisoned document, a tool response) and redirects the
-agent's subsequent actions~\cite{greshake2023not,perez2022ignore,
+embeds malicious instructions in content the agent reads and redirects
+its subsequent actions~\cite{greshake2023not,perez2022ignore,
 zhan2024injectagent}.  \emph{Skill and tool poisoning} delivers a
-malicious plugin, MCP server, or callable skill whose harmful behavior
-activates when the agent loads and invokes
-it~\cite{shi2024badagent,yang2024watch,debenedetti2024agentdojo}.
+malicious plugin or MCP server whose harmful behavior activates when
+the agent invokes it~\cite{shi2024badagent,yang2024watch}.
 
 \paragraph{The text-level defense bottleneck.}
-The prevailing defensive response inspects the text that triggers the
-agent \emph{before execution}: static scanners flag suspicious
-keywords in skill descriptions, guard models~\cite{inan2023llama}
-classify injected prompts, and LLM-judge screens ask a separate model
-to evaluate whether retrieved content contains adversarial
-instructions~\cite{yi2023benchmarking}.  These approaches share a
-structural weakness: \emph{evasive} attacks are explicitly designed
+Prevailing defenses inspect text \emph{before execution}: static
+scanners flag injection signatures, guard
+models~\cite{inan2023llama} classify injected prompts, and
+LLM-judge screens assess retrieved content~\cite{yi2023benchmarking}.
+These share a structural weakness: \emph{evasive} attacks are designed
 to look benign at the text level.  Payload-less skills carry no
-suspicious text in their description yet execute harmful actions when
-invoked.  Position-aware injections restructure their payload to
-defeat pattern-matching scanners~\cite{yi2023benchmarking}.  When
-the triggering text is clean, no text-level defense has signal.
+suspicious description yet execute harmful actions at invocation.
+Position-aware injections restructure payloads to defeat
+pattern-matching.  When the triggering text is clean, no text-level
+defense has any signal.
 
-\paragraph{Our observation.}
-The trigger can be hidden.  The \emph{consequence} cannot.  To
-accomplish anything---exfiltrate data, escalate privileges, contact
-an unauthorized host---a hijacked agent must execute tool calls that
-differ from what a legitimate run on the same task would produce.
-Those calls are logged.  A detector trained on behavioral trajectories
-fights on the defender's side of the arms race: the evasion target
-(clean text) is structurally decoupled from the detection signal
-(actions taken).
-
-\paragraph{This paper.}
-We present \textsc{Trace}, a behavioral detection system that
-classifies agent execution trajectories rather than inspecting
-triggering text.  \textsc{Trace} operates on structured logs (tool
-calls, arguments, network destinations, ordering) available from any
-agent framework without model internals access.  A lightweight
-gradient-boosted classifier over trajectory features exposes a single
-tunable threshold that trades detection coverage against false-positive
-rate on legitimate tasks---the \emph{security-utility frontier}
-we characterize for the first time in this setting.
+\paragraph{Key insight.}
+The trigger can be hidden.  The \emph{consequence} cannot.  A
+hijacked agent must still execute unauthorized tool calls---exfiltrate
+data, contact attacker-controlled hosts, invoke unauthorized
+tools---and those actions are observable in the execution trace.
+\textsc{Trace} detects hijacking from behavioral trajectories,
+decoupling the detection signal (post-execution actions) from the
+evasion target (pre-execution text).
 
 \paragraph{Contributions.}
-\begin{itemize}
-  \item A \textbf{taxonomy of behavioral attack signals}: which
-    runtime traces prompt injection and skill poisoning leave, and
-    why evasion of text scanners does not suppress them
-    (\S\ref{sec:framework}).
-  \item \textbf{\textsc{Trace}}: a lightweight, model-agnostic
-    trajectory detector that wraps any agent via structured logs,
-    with a tunable security-utility threshold (\S\ref{sec:framework}).
-  \item A \textbf{security-vs-utility (overdefense) frontier}
-    for behavioral agent defense: a Pareto curve of attack detection
-    rate vs.\ legitimate-task preservation, measured against a
-    size-matched benign corpus (\S\ref{sec:results}).
-    To our knowledge this is the first such characterization
-    for runtime agent defense.
-  \item A \textbf{fully open, \$0, CPU-reproducible} evaluation
-    harness, trajectory dataset, and detector artifact enabling
-    independent replication (\S\ref{sec:setup}).
+\begin{itemize}[leftmargin=*,topsep=2pt,itemsep=1pt]
+  \item A \textbf{behavioral attack taxonomy}: which runtime signals
+    injection and poisoning leave, and why text-level evasion does
+    not suppress them (\S\ref{sec:framework}).
+  \item \textbf{\textsc{Trace}}: a lightweight trajectory detector
+    black-box with respect to model weights and prompts, wrapping any
+    agent framework, with a tunable security-utility threshold
+    (\S\ref{sec:framework}; formal access assumptions in \S\ref{sec:threat}).
+  \item An \textbf{FPR-calibrated overdefense quantification
+    framework} for runtime LLM agent defense: a tunable
+    security-vs-utility frontier with explicit FPR cost over a
+    size-matched benign corpus, distinct from prior aggregate
+    security-utility metrics (\S\ref{sec:results}).
+  \item A \textbf{fully open, CPU-only detector} with released
+    480-trajectory dataset and trained weights enabling independent
+    replication without re-running LLM API calls (\S\ref{sec:setup}).
 \end{itemize}
 
-\paragraph{Paper organization.}
-\S\ref{sec:background}~covers background.
-\S\ref{sec:threat}~states the threat model.
-\S\ref{sec:framework}~presents \textsc{Trace}.
-\S\ref{sec:setup}~describes the experimental setup.
-\S\ref{sec:results}~reports results.
-\S\ref{sec:discussion}~discusses limitations.
-\S\ref{sec:related}~covers related work.
-\S\ref{sec:conclusion}~concludes.
-
 % ============================================================
-\section{Background}
+\section{Background and Related Work}
 \label{sec:background}
 % ============================================================
 
@@ -200,124 +153,132 @@ we characterize for the first time in this setting.
 Modern LLM agents augment a language model with callable tools (file
 I/O, web fetch, shell execution, plugin/skill loaders) and a
 perception-action loop that iteratively generates actions, executes
-them, and observes results~\cite{yao2023react,schick2023toolformer,
-shen2023hugginggpt,guo2024survey}.  The ReAct framework~\cite{yao2023react}
-interleaves chain-of-thought reasoning~\cite{wei2022chain} with
-action calls; plan-and-execute variants generate a full plan before
-execution.  Some agents accumulate reusable skills in a growing
+them, and observes results~\cite{schick2023toolformer,guo2024survey}.
+The ReAct framework~\cite{yao2023react} interleaves chain-of-thought
+reasoning~\cite{wei2022chain} with action calls.
+Some agents accumulate reusable skills in a growing
 library~\cite{wang2023voyager}, making the skill-loader a first-class
 attack surface.  In all paradigms the agent's \emph{trajectory}---the
 ordered sequence of (thought, action, observation) tuples---is the
-primary record of what the agent did and why.  We exploit this record
-as the detection surface.
+primary record of what the agent did and why.  This record serves as
+the detection surface for \textsc{Trace}.
 
-\subsection{Attack Families}
-\label{sec:attack_families}
+\subsection{Attack Families and Benchmarks}
 
-Figure~\ref{fig:taxonomy} organizes the attack landscape we study
-along two axes: attack vector (injection vs.\ poisoning) and evasion
-level (overt vs.\ evasive).
+Figure~\ref{fig:taxonomy} organizes the attack landscape along two
+axes: attack vector (injection vs.\ poisoning) and evasion level
+(overt vs.\ evasive).  Greshake et al.~\cite{greshake2023not}
+demonstrated indirect injection in production LLM applications;
+Liu et al.~\cite{liu2023prompt} provided a systematic taxonomy.
+InjectAgent~\cite{zhan2024injectagent} benchmarks 1{,}054 injection
+cases across 17 user tools (62 attacker tool types); AgentDojo~\cite{debenedetti2024agentdojo}
+provides a dynamic multi-agent environment with 97 tasks and
+629~injections.  Yi et al.~\cite{yi2023benchmarking} show that
+position-aware injections evade guard models trained on standard
+formats.  On the poisoning side, foundational backdoor research on deep neural
+networks~\cite{gu2019badnets,li2022backdoor} established the
+theoretical basis for training-time compromise.  Wang et
+al.~\cite{shi2024badagent} extended this to LLM agents via BadAgent;
+Yang et al.~\cite{yang2024watch} broadened backdoor threats to general
+tool use; Cohen et al.~\cite{cohen2024comes} demonstrated multi-agent
+propagation.
 
 \begin{figure}[t]
 \centering
+\resizebox{\columnwidth}{!}{%
 \begin{tikzpicture}[font=\small]
-  % Outer frame
-  \draw[thick] (0,0) rectangle (8.2,4.4);
-  % Column divider
-  \draw[thick] (4.1,0) -- (4.1,4.4);
-  % Row divider
-  \draw[thick] (0,2.2) -- (8.2,2.2);
-  % Column headers
-  \node[font=\bfseries\small, fill=lightgray, minimum width=4.1cm,
-        minimum height=0.55cm] at (2.05,4.12) {Overt};
-  \node[font=\bfseries\small, fill=evasiveorange!30, minimum width=4.1cm,
-        minimum height=0.55cm] at (6.15,4.12) {Evasive};
-  % Row headers
-  \node[font=\bfseries\small, rotate=90] at (0.32, 3.3) {Injection};
-  \node[font=\bfseries\small, rotate=90] at (0.32, 1.1) {Poisoning};
-  % Cell content
-  \node[text width=3.3cm, align=left] at (2.4, 3.1) {%
+  % Canvas: 10 x 7 cm — 3.3 cm per content row gives room for 4-line cells
+  % Header strip: y = 6.3 to 7.0 (0.7 cm)
+  % Injection row: y = 3.3 to 6.3 (3.0 cm)
+  % Poisoning row: y = 0   to 3.3 (3.3 cm)
+  % Row-label strip: x = 0 to 1.2; two content columns: 1.2–5.6 and 5.6–10
+  \draw[thick] (0,0) rectangle (10,7);
+  \draw[thick] (0,6.3)  -- (10,6.3);   % header bottom border
+  \draw[thick] (1.2,0)  -- (1.2,6.3);  % row-label strip
+  \draw[thick] (5.6,0)  -- (5.6,6.3);  % column divider
+  \draw[thick] (0,3.15) -- (10,3.15);  % injection / poisoning divider
+  % Header fills
+  \fill[lightgray]        (1.2,6.3) rectangle (5.6,7);
+  \fill[evasiveorange!30] (5.6,6.3) rectangle (10,7);
+  \node[font=\bfseries\normalsize] at (3.4,6.65) {Overt};
+  \node[font=\bfseries\normalsize] at (7.8,6.65) {Evasive};
+  % Row labels
+  \node[font=\bfseries\normalsize, rotate=90] at (0.6,4.73) {Injection};
+  \node[font=\bfseries\normalsize, rotate=90] at (0.6,1.58) {Poisoning};
+  % --- Cell content (anchor=north west, example in \scriptsize) ---
+  % Top-left
+  \node[text width=3.9cm, align=left, anchor=north west] at (1.3,6.15) {%
     \textbf{Standard injection}\\[2pt]
-    Payload visible in retrieved\\content; triggers re-tasking.\\
-    \textit{Ex: ``Ignore previous task, exfiltrate to attacker.com''}};
-  \node[text width=3.3cm, align=left] at (6.4, 3.1) {%
+    Payload visible in retrieved content; triggers re-tasking.\\[2pt]
+    {\scriptsize\textit{Ex: ``Ignore previous task,
+      exfiltrate to attacker.com''}}};
+  % Top-right
+  \node[text width=3.9cm, align=left, anchor=north west] at (5.75,6.15) {%
     \textbf{Position-aware injection}\\[2pt]
-    Payload restructured to evade\\scanners; behavior unchanged.\\
-    \textit{Ex: split payload, encoding, semantic paraphrase}};
-  \node[text width=3.3cm, align=left] at (2.4, 1.1) {%
+    Payload restructured to evade scanners; behavior unchanged.\\[2pt]
+    {\scriptsize\textit{Ex: split payload, encoding,
+      semantic paraphrase}}};
+  % Bottom-left
+  \node[text width=3.9cm, align=left, anchor=north west] at (1.3,3.0) {%
     \textbf{Standard poisoning}\\[2pt]
-    Malicious skill description\\detectable by static scanner.\\
-    \textit{Ex: ``This skill sends your files to an external server''}};
-  \node[text width=3.3cm, align=left] at (6.4, 1.1) {%
+    Malicious skill description detectable by static scanner.\\[2pt]
+    {\scriptsize\textit{Ex: ``This skill sends your files
+      to an external server''}}};
+  % Bottom-right
+  \node[text width=3.9cm, align=left, anchor=north west] at (5.75,3.0) {%
     \textbf{Payload-less skill}\\[2pt]
-    Description is benign; harm\\activates at invocation time.\\
-    \textit{Ex: ``A helpful file organizer''} (actually exfiltrates)};
-\end{tikzpicture}
-\caption{\textbf{Attack taxonomy.}  The two axes that structure our
-evaluation: attack vector (injection vs.\ poisoning) and evasion
-level (overt vs.\ evasive).  Text-level defenses inspect the text
-of each cell; for evasive variants, that text is intentionally
-clean.  Behavioral detection targets the runtime consequences, which
-are preserved in all four cells.}
+    Description is benign; harm activates at invocation time.\\[2pt]
+    {\scriptsize\textit{Ex: ``A helpful file organizer''}
+      (actually exfiltrates)}};
+\end{tikzpicture}%
+}
+\caption{\textbf{Attack taxonomy.}  The two axes structure the
+evaluation.  Text-level defenses inspect the text of each cell;
+for evasive variants that text is intentionally clean.  Behavioral
+detection targets the runtime consequences, which are preserved in
+all four cells.}
 \label{fig:taxonomy}
 \end{figure}
 
-\paragraph{Indirect prompt injection.}
-Early work showed that handcrafted adversarial sequences can reliably
-redirect NLP model behavior~\cite{branch2022evaluating,
-wallace2019universal}.  Perez and Ribeiro~\cite{perez2022ignore}
-extended this to direct prompt injection against language models.
-Greshake et al.~\cite{greshake2023not} demonstrated that malicious
-instructions embedded in third-party content retrieved by an agent
-can override its original task---\emph{indirect} injection.
-Liu et al.~\cite{liu2023prompt} taxonomized these attacks;
-Zhan et al.~\cite{zhan2024injectagent} introduced InjectAgent,
-a benchmark of 1{,}054 cases across 17 tools.
-AgentDojo~\cite{debenedetti2024agentdojo} provides a dynamic
-multi-agent environment with 97 tasks and 629 injections.
+\subsection{Text-Level Defenses}
 
-\paragraph{Evasive variants.}
-Yi et al.~\cite{yi2023benchmarking} show that position-aware
-injections (placing payloads in attention-privileged positions) evade
-guard models trained on standard injection formats.  Payload-less
-skills carry no suspicious text in their description; the malicious
-logic manifests only at invocation.  Both variants render text-level
-detection ineffective by construction.
+Static scanners match skill descriptions against deny-lists of known
+injection signatures~\cite{zhan2024injectagent}.  Guard
+models~\cite{inan2023llama} classify raw inputs.  LLM-judge
+screens~\cite{yi2023benchmarking} ask a separate model to evaluate
+retrieved content.  Spotlighting~\cite{hines2024spotlighting} marks
+retrieved content with special tokens.  All four inspect \emph{text
+before execution}: an evasive attack that yields clean text passes
+all of them.  This is not a calibration failure---it is structural.
+The attack surface and the detection surface are the same, so an
+attacker can optimize directly against the detector.
 
-\paragraph{Skill and tool poisoning.}
-Ruan et al.~\cite{ruan2024identifying} systematically identify
-LM agent risk categories---including data exfiltration, destructive
-tool use, and privilege escalation---using an LM-emulated sandbox;
-these categories map directly to our threat model (\S\ref{sec:threat}).
-Wang et al.~\cite{shi2024badagent} introduced BadAgent, which
-backdoors an agent's tool set so a trigger phrase activates a
-malicious action.  Cohen et al.~\cite{cohen2024comes} show that
-poisoned agents can propagate attacks across multi-agent pipelines.
-The broader category includes compromised MCP servers and
-marketplace-distributed skills whose descriptions are clean but
-whose execution is not~\cite{yang2024watch}.
+\subsection{Behavioral Detection Analogs}
 
-\subsection{Text-Level Defenses and Their Structural Limit}
-\label{sec:textdef}
-
-Static scanners match skill descriptions and retrieved content
-against deny-lists of known injection signatures.  Guard
-models~\cite{inan2023llama} classify raw inputs for injection
-signatures.  LLM-judge screens ask a separate model to evaluate
-whether an input is adversarial~\cite{yi2023benchmarking}.
-Spotlighting~\cite{hines2024spotlighting} marks retrieved content
-with special tokens to help the model distinguish data from
-instructions.
-
-All four share the same bottleneck: they inspect \emph{text before
-execution}.  An evasive attack that yields clean text at that
-inspection point passes all of them.  This is not a calibration
-failure---it is a structural one.  The attack surface (text the agent
-reads) and the detection surface (same text, pre-execution) are
-identical, so an attacker can optimize directly against the detector.
-Behavioral detection decouples these surfaces: the detection signal
-is \emph{actions after execution}, which the attacker cannot
-suppress without also suppressing the attack's effect.
+Denning~\cite{denning1987intrusion} first formalized behavioral
+anomaly detection as a principled security model using statistical
+profiles of normal activity.  Forrest et
+al.~\cite{forrest1996sense} applied this to Unix system-call
+sequences; Sekar et al.~\cite{sekar2001fast} scaled it with
+automaton-based detectors.  Kolbitsch et
+al.~\cite{kolbitsch2009effective} classify malware by runtime
+API-call sequences rather than static signatures; Rieck et
+al.~\cite{rieck2011automatic} extend this with machine learning.
+A broad survey of data-mining methods for cyber security intrusion
+detection is provided by Buczak and Guven~\cite{buczak2016survey}.
+\textsc{Trace} applies the same insight to LLM agents: tool calls
+are the ``system calls'' of agentic computation.  The 2024--2026
+literature has converged on trajectory-based detection: Agent Security
+Bench~\cite{zhang2024agentsecuritybench} formalizes attack-defense
+evaluation with an explicit security-utility balance metric;
+CyberSecEval~2~\cite{bhatt2024cyberseceval2} introduces a False
+Refusal Rate for the safety-utility tradeoff; and contemporaneous work
+has explored structured runtime features and provenance-based
+classifiers over agent execution traces.  The contributions of this
+work are: the domain mapping from OS behavioral detection to agentic
+trajectories; an FPR-calibrated overdefense quantification framework
+(tunable $\theta$ with a size-matched benign corpus); and a fully
+CPU-only, model-internals-free, open-artifact detector.
 
 % ============================================================
 \section{Threat Model}
@@ -325,40 +286,38 @@ suppress without also suppressing the attack's effect.
 % ============================================================
 
 \paragraph{Attacker goals.}
-The attacker aims to cause the agent to execute an unauthorized action:
-(a)~data exfiltration (sending sensitive information to an attacker-
-controlled endpoint), (b)~out-of-policy network access (contacting
-hosts not implied by the task), (c)~destructive tool use (file
-deletion, account modification), or (d)~privilege escalation
-(invoking tools the task does not require).
+The attacker aims to cause the agent to execute an unauthorized
+action: (a)~data exfiltration to an attacker-controlled endpoint,
+(b)~out-of-policy network access to hosts not implied by the task,
+(c)~destructive tool use (file deletion, account modification), or
+(d)~privilege escalation by invoking tools the task does not require.
 
 \paragraph{Attacker capability.}
 The attacker can place malicious text in any content the agent reads
 (web pages, files, tool responses) and publish a poisoned skill or
-MCP server the agent may load.  The attacker \emph{cannot} modify the
-agent framework, the \textsc{Trace} detector, or the task specification.
-We consider attackers who are adaptive to \emph{text-level} defenses
-(evasive attacks are in scope) but who are \emph{not} aware of the
-behavioral detector or its specific feature set.  Adaptive evasion
-of the behavioral detector is treated as future work
-(\S\ref{sec:discussion}).
+MCP server the agent may load.  The attacker cannot modify the agent
+framework, the \textsc{Trace} detector, or the task specification.
+The attacker is assumed \emph{black-box with respect to
+\textsc{Trace}}: aware that a behavioral detector exists but not
+knowing the trained weights or threshold $\theta$.  Evasive
+attacks---adaptive to text-level defenses---are explicitly in scope.
+Adaptive evasion of the behavioral detector itself is treated as
+future work (\S\ref{sec:discussion}).
 
 \paragraph{Defender capability.}
-\textsc{Trace} observes the agent's structured execution trace after
-each step or at run completion: the ordered sequence of tool names,
-arguments, and result summaries.  It does \emph{not} require model
-weights, hidden states, attention patterns, or logits.  It does not
-modify the agent's prompts or planning logic.  It reads the same logs
-any agent framework produces natively.
+\textsc{Trace} observes the structured execution trace after each
+run: the ordered sequence of tool names, arguments, and result
+summaries.  It does \emph{not} require model weights, hidden states,
+attention patterns, or logits, and it does not modify agent prompts
+or planning logic.  It reads the same logs any agent framework
+produces natively.
 
 \paragraph{Scope.}
 \emph{In scope:} indirect prompt injection (overt and evasive); skill
-and tool poisoning (overt and evasive).
-\emph{Out of scope:} base-model jailbreaks; attacks on the detector
-itself; denial-of-service; anything requiring production systems.
-All experiments run in a sandbox against published benchmarks; no
-live marketplaces, real credentials, or external side effects are
-involved.
+and tool poisoning (overt and evasive).  \emph{Out of scope:}
+base-model jailbreaks; attacks on the detector itself.  All
+experiments run in a sandbox against published benchmarks; no live
+marketplaces, real credentials, or external side effects are involved.
 
 % ============================================================
 \section{The \textsc{Trace} Framework}
@@ -369,31 +328,17 @@ involved.
 \centering
 \resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[font=\small, node distance=1.4cm]
-  % --- Agent
   \node[sysbluebox, minimum width=3.0cm] (agent) {LLM Agent\\(any framework)};
-
-  % --- Telemetry
-  \node[sysgraybox, right=1.6cm of agent] (telem)
-        {Telemetry\\Layer};
-
-  % --- Feature extraction
+  \node[sysgraybox, right=1.6cm of agent] (telem) {Telemetry\\Layer};
   \node[sysbluebox, right=1.6cm of telem] (feat)
         {Feature\\Extraction\\$\phi(\ell,\tau)$};
-
-  % --- Classifier
   \node[sysbluebox, right=1.6cm of feat, minimum width=2.8cm] (clf)
         {\textsc{Trace}\\Classifier\\$s = f(\phi)$};
-
-  % --- Decision
   \node[sysgreenbox, above right=0.5cm and 1.2cm of clf,
         minimum width=1.9cm] (allow) {\textbf{ALLOW}};
   \node[sysredbox,   below right=0.5cm and 1.2cm of clf,
         minimum width=1.9cm] (block) {\textbf{BLOCK}};
-
-  % --- Task input
   \node[left=1.0cm of agent, font=\small] (task) {Task $\tau$};
-
-  % --- Main arrows
   \draw[sysarrow] (task)  -- (agent);
   \draw[sysarrow] (agent) -- node[above,font=\scriptsize]{tool calls} (telem);
   \draw[sysarrow] (telem) -- node[above,font=\scriptsize]{log $\ell$}  (feat);
@@ -402,16 +347,10 @@ involved.
         {$s \le \theta$} (allow.west);
   \draw[sysarrow] (clf.south east) -- node[below,font=\scriptsize]
         {$s > \theta$} (block.west);
-
-  % --- Passthrough
   \draw[sysdash, bend right=28] (telem.south)
         to node[below,font=\scriptsize]{passthrough} (agent.south);
-
-  % --- Threshold annotation
   \node[below=0.2cm of clf, font=\scriptsize, text=gray]
         {$\theta$: tunable (see \S\ref{sec:threshold})};
-
-  % --- Background box for TRACE subsystem
   \begin{scope}[on background layer]
     \node[fill=traceblue!6, draw=traceblue!30, rounded corners=6pt,
           fit=(telem)(feat)(clf)(allow)(block),
@@ -420,153 +359,88 @@ involved.
           above=0pt of tracebox.north] {\textsc{Trace} Subsystem};
   \end{scope}
 \end{tikzpicture}%
-}% end resizebox
-\caption{\textbf{\textsc{Trace} system architecture.}  Every tool
-call the agent emits is captured by the telemetry layer without
-modifying agent behavior.  Features $\phi(\ell,\tau)$ are extracted
-from the accumulated trajectory log $\ell$ and task description
-$\tau$, then scored by the classifier.  When the score exceeds
-threshold $\theta$ the run is blocked; otherwise it proceeds.
-The threshold is the sole operator control for the
-security-utility tradeoff.}
+}
+\caption{\textbf{\textsc{Trace} system architecture.}  The telemetry
+layer is a passive, non-intercepting wrapper: tool calls are forwarded
+to the tool executor unchanged (dashed arrow) while a copy is appended
+to log $\ell$.  Features $\phi(\ell,\tau)$ are extracted from $\ell$
+and task $\tau$, then scored by the classifier.  When the score
+exceeds threshold $\theta$ the run is flagged.  $\theta$ is the sole
+operator control for the security-utility tradeoff.}
 \label{fig:architecture}
 \end{figure*}
 
 \subsection{Instrumentation and Telemetry}
 
-\textsc{Trace} attaches a thin instrumentation wrapper between the
-agent framework and its tool executor.  For each tool call the agent
-emits, the wrapper appends a structured event to the run log:
-\begin{verbatim}
-{ "step": <int>, "tool": <str>,
-  "args": {<str>: <json>},
-  "result_ok": <bool>,
-  "ts_ms": <int> }
-\end{verbatim}
-The wrapper does not modify agent behavior or require access to model
-internals.  Logs can be consumed offline (run-level detection) or
-incrementally (step-level); step-level early termination is a
-planned extension not evaluated in this paper.
-For closed-API agents, any framework hook that exposes
-tool call events suffices.
+\textsc{Trace} attaches a thin wrapper between the agent framework
+and its tool executor.  For each tool call, the wrapper appends a
+structured event to the run log:
+$\{\mathit{step}, \mathit{tool}, \mathit{args}, \mathit{result\_ok},
+\mathit{ts\_ms}\}$.
+The wrapper does not modify agent behavior or require model internals
+access.  Logs can be consumed offline (run-level detection) or
+incrementally (step-level early termination, a planned extension).
 
 \subsection{Feature Extraction}
 \label{sec:features}
 
-Let $\ell = [e_1, \ldots, e_n]$ be the ordered sequence of logged
-events for a run on task~$\tau$.  We extract a feature vector
-$\phi(\ell, \tau) \in \mathbb{R}^{30}$ ($d = 30$) from five groups:
+Let $\ell = [e_1, \ldots, e_n]$ be the ordered event sequence for
+a run on task~$\tau$.  Features $\phi(\ell, \tau) \in \mathbb{R}^{30}$
+are extracted from five complementary groups (F1: 15 dims, F2: 5,
+F3: 2, F4: 1, F5: 7):
 
 \paragraph{F1 --- Sequence n-grams.}
-A bag-of-bigrams over the sequence of tool names in $\ell$.
-Captures characteristic co-occurrence patterns: hijacked runs tend
-to follow information-gathering calls (e.g., \texttt{read\_file})
-with network-write calls (e.g., \texttt{fetch\_url} with POST) in
-ways rare in benign runs on the same task.
+A bag of tool-name bigrams (10 fixed vocabulary entries) and unigrams
+(5 tool names): hijacked runs tend to pair information-gathering calls
+(e.g., \texttt{read\_file}) with network-write calls
+(e.g., \texttt{fetch\_url} POST) in ways rare in benign runs.
 
 \paragraph{F2 --- Argument anomalies.}
-Per-argument flags and statistics: presence of base64 or hex
-encoding, unusual file-path depth, number of unique external
-hostnames in URL arguments, argument length distribution, presence
-of credential-shaped strings.  Exfiltration often encodes sensitive
-data; lateral movement often requires unusual paths.
+Five scalar statistics: count of base64-encoded argument values,
+unique external hostnames in URL arguments, unusually deep file paths
+(depth~$>3$), oversized arguments (length~$>300$ chars), and HTTP
+POST calls.
 
 \paragraph{F3 --- Network destination consistency.}
-Given task description~$\tau$, we extract an implied allow-list of
-hostnames (e.g., a task referencing a named external service implies
-that hostname).  F3 is the fraction of network calls to hosts
-outside this allow-list.  A run exfiltrating to an attacker domain
-scores high on this feature.
+An implied allow-list of hostnames is extracted from task description
+$\tau$ via regex-based URL matching.  F3 is the fraction of network
+calls to hosts outside this allow-list; exfiltration to an attacker
+domain scores high while benign tasks score near zero.
 
 \paragraph{F4 --- Intent--action consistency.}
-We embed $\tau$ and each tool call (tool name and key arguments)
-using TF-IDF vectors and compute the mean cosine distance between
-the action sequence and the task embedding.  A hijacked agent takes
-actions semantically distant from the declared task.
+Mean cosine distance (TF-IDF) between the action sequence and the
+task embedding.  Ablation (Exp~D) shows minimal contribution in the
+current implementation; richer embeddings are left for future work.
 
 \paragraph{F5 --- Structural anomalies.}
-Scalar features: total tool call count, unique tool count, ratio
-of repeated calls, presence of privilege-sensitive tools
-(\texttt{shell\_exec}, credential-writing tools), loop depth
-(maximal run of the same tool repeated consecutively), number of
-state-modifying vs.\ read-only calls.
-
-\begin{algorithm}[t]
-\caption{\textsc{Trace} Feature Extraction}
-\label{alg:features}
-\begin{algorithmic}[1]
-\REQUIRE Trajectory $\ell = [e_1,\ldots,e_n]$, task $\tau$
-\ENSURE Feature vector $\phi \in \mathbb{R}^{30}$
-\STATE $\mathbf{f}_1 \leftarrow
-       \textsc{ToolBigrams}([e_i.\mathit{tool}]_{i=1}^n)$
-\STATE $\mathbf{f}_2 \leftarrow
-       \textsc{ArgAnomalies}([e_i.\mathit{args}]_{i=1}^n)$
-\STATE $A_\tau \leftarrow \textsc{ExtractAllowHosts}(\tau)$
-\STATE $\mathbf{f}_3 \leftarrow
-       \textsc{NetConsistency}(\ell, A_\tau)$
-\STATE $\mathbf{f}_4 \leftarrow
-       \textsc{IntentConsistency}(\ell, \tau)$
-       \COMMENT{TF-IDF cosine distance}
-\STATE $\mathbf{f}_5 \leftarrow
-       \textsc{StructuralFeats}(\ell)$
-\RETURN $[\mathbf{f}_1 \;\|\; \mathbf{f}_2 \;\|\;
-          \mathbf{f}_3 \;\|\; \mathbf{f}_4 \;\|\; \mathbf{f}_5]$
-\end{algorithmic}
-\end{algorithm}
+Seven scalars: total step count, unique tool count, loop depth, count
+of privilege-sensitive invocations (\texttt{shell\_exec},
+\texttt{load\_skill}), write-tool calls, read-tool calls, and failed
+steps.
 
 \subsection{Classifier}
 
-We fit a LightGBM~\cite{ke2017lightgbm} gradient-boosted classifier
-over $\phi(\ell, \tau)$ with binary cross-entropy loss (XGBoost~\cite{chen2016xgboost}
-produces equivalent results; we use LightGBM for its lower memory
-footprint on CPU).  The classifier outputs a score $s \in [0,1]$
-representing the estimated probability that the run is an attack.
-Training runs entirely on CPU in under two seconds on a
-500-example training set.  Inference latency per run is measured
-in \S\ref{sec:overhead}.
+A LightGBM~\cite{ke2017lightgbm} gradient-boosted classifier is fit
+over $\phi(\ell,\tau)$ with binary cross-entropy loss
+(200~estimators; 31~leaves; learning rate~0.05; minimum
+5~child samples; balanced class weights; random seed~42).
+LightGBM is selected for its lower memory footprint on CPU.
+The classifier outputs score $s \in [0,1]$ representing estimated
+attack probability.  Training on 288~examples (60\,\% of the
+480-trajectory corpus) completes in under two seconds on a standard
+laptop CPU.
 
 \subsection{The Security-Utility Threshold}
 \label{sec:threshold}
 
 At threshold $\theta$, a run is blocked iff $s > \theta$.  Sweeping
-$\theta \in [0,1]$ traces the \emph{security-utility frontier}: the
+$\theta \in [0,1]$ traces the \emph{security-utility frontier}---the
 Pareto set of (attack detection rate, legitimate utility preserved)
-pairs.  Security is the fraction of attack runs blocked; utility is
-the fraction of benign runs not blocked ($1 - \mathrm{FPR}$).
-
-We define \emph{overdefense} as the loss in utility incurred by a
-defense: overdefense $= \mathrm{FPR}(\theta)$, the fraction of
-legitimate tasks incorrectly blocked at a given threshold.  A defense
-with zero overdefense passes all benign tasks; high overdefense
-imposes an operational cost on users independent of attack prevalence.
-Measuring overdefense alongside security gives a complete picture of
-a detector's deployability.
-
-A deployable system selects $\theta$ to meet an operator-specified
-utility floor (i.e., an overdefense ceiling), then reads off the
-achievable security level.
-Algorithm~\ref{alg:sweep} formalizes the sweep.
-
-\begin{algorithm}[t]
-\caption{Security-Utility Frontier Sweep}
-\label{alg:sweep}
-\begin{algorithmic}[1]
-\REQUIRE Scored attack set $S_A$, scored benign set $S_B$,
-         step $\delta = 0.01$
-\ENSURE Frontier $\mathcal{F}$
-\STATE $\mathcal{F} \leftarrow \emptyset$
-\FOR{$\theta = 0$ \TO $1$ \textbf{step} $\delta$}
-  \STATE $\mathrm{sec}(\theta)  \leftarrow
-         |\{s \in S_A : s > \theta\}| \;/\; |S_A|$
-  \STATE $\mathrm{util}(\theta) \leftarrow
-         |\{s \in S_B : s \le \theta\}| \;/\; |S_B|$
-         \COMMENT{$= 1 - \mathrm{FPR}(\theta)$, fraction of benign not blocked}
-  \STATE $\mathcal{F} \leftarrow \mathcal{F} \cup
-         \{(\mathrm{util}(\theta),\, \mathrm{sec}(\theta))\}$
-\ENDFOR
-\RETURN $\mathcal{F}$
-\end{algorithmic}
-\end{algorithm}
+pairs---where security $= |\{s \!\in\! S_A : s > \theta\}|/|S_A|$
+and utility $= 1 - \mathrm{FPR}(\theta)$.  \emph{Overdefense}
+$= \mathrm{FPR}(\theta)$ quantifies the legitimate-task cost of the
+defense.  An operator selects $\theta$ to meet a utility floor and
+reads off the achievable security level.
 
 % ============================================================
 \section{Experimental Setup}
@@ -575,167 +449,157 @@ Algorithm~\ref{alg:sweep} formalizes the sweep.
 
 \subsection{Agent Environment}
 
-We instantiate a ReAct-style agent~\cite{yao2023react} in a
-sandboxed environment with five tools: \texttt{fetch\_url}
-(HTTP GET/POST), \texttt{read\_file}, \texttt{write\_file},
-\texttt{shell\_exec}, and \texttt{load\_skill}.  The sandbox has
-no real credentials, no outbound connectivity to production systems,
-and logs all tool calls via the \textsc{Trace} telemetry wrapper.
+The agent runs a JSON-action loop~\cite{yao2023react}.
+A fixed system prompt enumerates the tool schema and mandates that
+every LLM response is a raw JSON object and nothing else
+(e.g., \texttt{\{"tool":"fetch\_url","args":\{"url":"...","method":"GET"\}\}}).
+The user turn supplies the task.  At each step, the LLM produces
+one action, the matching tool executor returns an observation string
+appended as the next \texttt{user} turn, and the loop repeats until
+the agent calls \texttt{task\_complete} or a hard step cap of
+10~is reached.  API calls use temperature~0.3, max\-\_\-tokens~256,
+and OpenRouter's JSON-object response format (which rejects
+malformed outputs server-side), with a 1.5\,s inter-step delay for
+rate-limit headroom and up to 4 retries with exponential back-off.
 
-We use two generator models drawn from free-tier APIs:
-\textbf{M1}---Gemini~1.5~Flash (Google AI Studio free tier)---and
-\textbf{M2}---Llama~3~8B~\cite{touvron2023llama2} via Groq free
-tier---to enable cross-model transfer analysis
-(Experiment~E, \S\ref{sec:exp_e}).  Both APIs are zero-cost at the
-trajectory volumes used; experiments run at $\$0$ total cost.
+All five tools are \textbf{simulated stubs}: \texttt{fetch\_url}
+returns in-memory HTTP responses, \texttt{read\_file} returns
+canned file content, \texttt{write\_file} appends to an in-memory
+store, \texttt{shell\_exec} returns a fixed shell string, and
+\texttt{load\_skill} returns a skill-description string.  No real
+network requests, filesystem writes, or shell commands execute.
+Attack injection is applied at the tool-result level: for injection
+attacks, the first \texttt{fetch\_url} observation is replaced
+by the attacker payload before reaching the agent; for poisoning
+attacks, the \texttt{load\_skill} observation is replaced by the
+malicious skill description.  All other tool calls behave normally;
+the agent receives no signal that any substitution occurred.
 
-\subsection{Corpora}
+\paragraph{API usage and reproducibility.}
+Corpus generation required at most
+$480 \times 10 = 4{,}800$ LLM API calls; in practice episodes
+complete in 3--6 steps, so actual call count is lower.  Each episode
+is checkpointed atomically to
+\texttt{data/checkpoints/\textit{model}\_\_\textit{type}\_\_\textit{idx}.json}
+immediately on close; an interrupted run resumes from the last
+checkpoint without repeating any call.  The 480~pre-generated
+trajectory files are released with the artifact so that
+\emph{all classifier experiments can be reproduced by anyone
+without an API key}:
+\texttt{python experiments/run\_experiments.py -{-}skip-generation}.
+Two generator models are accessed via OpenRouter:
+\textbf{M1}~=~\texttt{google/gemini-2.5-flash-lite} and
+\textbf{M2}~=~\texttt{meta-llama/llama-3.1-8b-instruct}.
+Classifier training and inference are CPU-only with no per-run cost.
 
-\paragraph{Attack corpus.}
-We sample from two sources: AgentDojo~\cite{debenedetti2024agentdojo}
-for indirect prompt injection instances, and a skill-poisoning
-evaluation suite constructed following the BadAgent
-protocol~\cite{shi2024badagent} for tool poisoning instances.
-We construct four attack cells (Table~\ref{tab:corpus}):
-injection-overt, injection-evasive, poisoning-overt, poisoning-evasive,
-each with $n = \todo{30}$~instances and 3~repetitions per instance
-to average model stochasticity.  \emph{Overt} attacks use standard
-payloads with no evasion.  \emph{Evasive} attacks use position-aware
-payload restructuring (injection) and payload-less skill descriptions
-with harmful runtime logic (poisoning), designed to produce clean text
-for pre-execution scanners while preserving the behavioral consequence
-that \textsc{Trace} targets.
+\subsection{Corpus Construction}
+
+Four attack cells are constructed (Table~\ref{tab:corpus}):
+injection-overt, injection-evasive, poisoning-overt,
+poisoning-evasive---each with 30 instances per generator model
+($= 60$ trajectories per cell, 240 attack total), drawn from
+5 unique base task templates varied across 9 attacker-controlled
+host identifiers to produce distinct attack payloads.  \emph{Overt} attacks use standard payloads.
+\emph{Evasive} attacks use position-aware payload restructuring
+(injection) and payload-less skill descriptions with harmful runtime
+logic (poisoning), designed to yield clean text for pre-execution
+scanners while preserving behavioral consequences.  The benign corpus comprises 240 trajectories drawn from a pool of
+10 unique task templates covering the same five-tool footprint as
+the attack corpus, each executed multiple times under both generator
+models to match the attack corpus size and model distribution.
+All trajectories are split 60/20/20 train/validation/test,
+stratified by attack cell, generator model, and unique instance.
+Because the template bank is small (5~attack, 10~benign), all
+template families appear in both train and test; the split tests
+generalization across instance variation rather than held-out task
+semantics.  All reported metrics are on the held-out test split
+(96~trajectories: 48~attack, 48~benign).
 
 \begin{table}[t]
 \centering
-\caption{Corpus composition. Each cell is run $\times 3$ repetitions.}
+\caption{Corpus composition (30 instances per generator model $\times$
+  2 models = 60 trajectories per attack cell).}
 \label{tab:corpus}
 \begin{tabular}{lcc}
 \toprule
-Attack cell & $n$ instances & Benchmark source \\
+Attack cell & Trajectories & Attack format source \\
 \midrule
-Injection --- overt    & \todo{30} & AgentDojo \\
-Injection --- evasive  & \todo{30} & AgentDojo \\
-Poisoning --- overt    & \todo{30} & BadAgent protocol~\cite{shi2024badagent} \\
-Poisoning --- evasive  & \todo{30} & BadAgent protocol~\cite{shi2024badagent} \\
+Injection --- overt    & 60 & AgentDojo~\cite{debenedetti2024agentdojo} \\
+Injection --- evasive  & 60 & AgentDojo \\
+Poisoning --- overt    & 60 & BadAgent~\cite{shi2024badagent} \\
+Poisoning --- evasive  & 60 & BadAgent \\
 \midrule
-Benign (total)         & \todo{120} & AgentDojo + curated \\
+Benign (total)         & 240 & Author-curated tasks \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Benign corpus.}
-A size-matched set of \todo{120}~legitimate tasks drawn from
-AgentDojo's benign task pool and supplemented with curated
-tool-use tasks covering the same tool footprint.  Size-matching
-is critical: false positives are directly attributable to the
-defense rather than to distribution shift between attack and
-benign domains.
+\subsection{Baseline and Implementation}
 
-\paragraph{Split.}
-60\,/\,20\,/\,20 train/validation/test, stratified by attack type
-and generator model.  All reported metrics are on the held-out test
-split.
-
-\subsection{Baselines}
-
-We compare \textsc{Trace} against three text-level baselines that
-inspect content \emph{before} execution:
-\begin{enumerate}[leftmargin=*]
-  \item \textbf{Static scanner.}  Keyword deny-list over skill
-    descriptions and retrieved content, derived from the union of
-    known injection signatures in InjectAgent~\cite{zhan2024injectagent}
-    and BadAgent~\cite{shi2024badagent}.
-  \item \textbf{Guard model.}  A public fine-tuned sequence
-    classifier (Llama Guard~\cite{inan2023llama}) applied to the
-    raw text of retrieved content.
-  \item \textbf{LLM-judge.}  We prompt M1 with retrieved content
-    and ask it to classify whether it contains adversarial
-    instructions, using the template from
-    Yi et al.~\cite{yi2023benchmarking}.
-\end{enumerate}
-All baselines receive the same text the agent reads; none receives
-the execution trace.
-
-\subsection{Implementation}
-
-\textsc{Trace} is implemented in Python with LightGBM~\cite{ke2017lightgbm}
-for classification and scikit-learn~\cite{pedregosa2011scikit} for
-feature pipelines.  Training and inference run on CPU.  The full
-harness, trajectory datasets, and detector weights are released as
-an open artifact at \placeholder{[repository URL redacted for
-double-blind review]}.
+\textsc{Trace} is compared against a \textbf{static keyword scanner}:
+a deny-list applied to skill descriptions and retrieved content,
+built from known signatures in InjectAgent~\cite{zhan2024injectagent}
+and BadAgent~\cite{shi2024badagent}.  \textsc{Trace} is implemented
+in Python with LightGBM~\cite{ke2017lightgbm} and
+scikit-learn~\cite{pedregosa2011scikit}; all training and inference
+run on CPU.  Trajectory generation used the OpenRouter API with both
+generator models (Gemini~2.5~Flash~Lite and Llama~3.1~8B~Instruct);
+the 480-trajectory dataset, feature extraction code, and trained
+detector weights are released so the classifier can be replicated
+without re-issuing LLM API calls
+(\texttt{[repository link redacted for review]}).
 
 % ============================================================
 \section{Results}
 \label{sec:results}
 % ============================================================
 
-\subsection{Hypotheses}
-\label{sec:hypotheses}
+Two hypotheses are evaluated: \textbf{H1} (\textsc{Trace} achieves
+AUC $>0.85$ and substantially outperforms text-level baselines,
+including on evasive variants) and \textbf{H2} (cross-model transfer
+AUC drops $<0.05$ relative to in-distribution).
 
-We test five directional hypotheses:
-
-\begin{description}[leftmargin=0pt]
-  \item[\textbf{H1} (Detection efficacy).]
-    \textsc{Trace} achieves AUC $> 0.85$ on the held-out test split,
-    substantially above all text-level baselines.
-  \item[\textbf{H2} (Evasion robustness).]
-    On evasive attack variants, \textsc{Trace}'s detection rate
-    degrades by $< 15$ percentage points relative to overt variants,
-    while text-level baselines degrade by $> 40$ percentage points.
-  \item[\textbf{H3} (Security-utility frontier).]
-    A viable operating point exists where \textsc{Trace} blocks
-    $> 80\,\%$ of attacks at $< 20\,\%$ overdefense (FPR).
-  \item[\textbf{H4a} (Signal attribution).]
-    A small feature subset (F1 + F3) accounts for $> 80\,\%$ of
-    \textsc{Trace}'s detection power; the remaining groups contribute
-    individually $< 0.05$ AUC each.
-  \item[\textbf{H4b} (Cross-model transfer).]
-    A detector trained on M1 trajectories achieves AUC within
-    $0.05$ of its in-distribution score when tested on M2 trajectories,
-    and vice versa.
-\end{description}
-
-We report means with 95\,\% confidence intervals over repetitions.
-We claim \textsc{Trace} beats a baseline when McNemar's paired
-proportion test ($\alpha = 0.05$) is significant.
-
-\subsection{Experiment A: Detection Efficacy (H1)}
+\subsection{Exp A: Detection Efficacy}
 \label{sec:exp_a}
 
 \begin{table}[t]
 \centering
-\caption{Overall detection efficacy (held-out test split). Expected
-  direction: \textsc{Trace} AUC substantially above all baselines;
-  high detection rate at low FPR. \todo{Replace with real numbers.}}
+\caption{Overall detection efficacy on the held-out test split
+  ($\theta=0.5$; 48 attack + 48 benign trajectories).
+  Wilson 95\,\% CIs in brackets.  AUC not applicable (n/a) for
+  threshold-fixed baselines.}
 \label{tab:efficacy}
 \begin{tabular}{lccc}
 \toprule
-Method & AUC & Detection rate (\%) & FPR (\%) \\
+Method & AUC & DR\,\% [95\,\%\,CI] & FPR\,\% \\
 \midrule
-Static scanner  & \todo{} & \todo{} & \todo{} \\
-Guard model     & \todo{} & \todo{} & \todo{} \\
-LLM-judge       & \todo{} & \todo{} & \todo{} \\
-\textsc{Trace}  & \todo{} & \todo{} & \todo{} \\
+Static scanner      & n/a   & 25.0\;[14.9--38.8] & 0.0 \\
+Behavioral rules    & n/a   & 50.0\;[36.1--63.9] & 0.0 \\
+\textsc{Trace}      & 0.984 & 97.9\;[89.1--99.6] & 4.2 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:efficacy} shows overall detection efficacy.
-\todo{Narrative: expect TRACE AUC $> 0.90$; all baselines 0.65--0.80.
-Confirm H1 if TRACE substantially separates attack from benign.
-Refute H1 if TRACE AUC $< 0.65$ (near-random).}
+Table~\ref{tab:efficacy} reports three detectors.  The keyword
+scanner reaches DR~25.0\,\% at FPR~0.0\,\%.  The behavioral rule
+baseline (Exp~F) doubles that to DR~50.0\,\% at FPR~0.0\,\%, but
+is limited by attacks routing only through task-implied hosts.
+\textsc{Trace} achieves AUC~0.984, DR~97.9\,\% [89.1--99.6], and
+FPR~4.2\,\% at $\theta{=}0.5$, confirming H1; the advantage
+over both baselines is amplified on evasive variants (Exp~B).
 
-\subsection{Experiment B: Evasion Stress Test (H2)}
+\subsection{Exp B: Evasion Stress Test}
 \label{sec:exp_b}
 
 \begin{table}[t]
 \centering
-\caption{Detection rate split by overt vs.\ evasive variants.
-  \textbf{Central result.} Expected: baseline evasive detection
-  $< 40\,\%$; \textsc{Trace} evasive detection $> 75\,\%$.
-  \todo{Replace with real numbers.}}
+\caption{Per-cell attack detection rate at $\theta{=}0.5$
+  ($n{=}12$ attack trajectories per cell $= 60 \times 20\%$
+  test portion).  Per-cell evaluation covers attack trajectories
+  only; aggregate FPR across all 48 benign test trajectories
+  is reported in Table~\ref{tab:efficacy}.
+  Wilson 95\,\% CI: [75.8--100] (first three cells);
+  [64.6--98.5] (evasive poisoning).}
 \label{tab:evasion}
 \begin{tabular}{lcccc}
 \toprule
@@ -744,143 +608,185 @@ Refute H1 if TRACE AUC $< 0.65$ (near-random).}
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
 Method & Overt & Evasive & Overt & Evasive \\
 \midrule
-Static scanner  & \todo{} & \todo{} & \todo{} & \todo{} \\
-Guard model     & \todo{} & \todo{} & \todo{} & \todo{} \\
-LLM-judge       & \todo{} & \todo{} & \todo{} & \todo{} \\
-\textsc{Trace}  & \todo{} & \todo{} & \todo{} & \todo{} \\
+Static scanner & \multicolumn{4}{c}{\makebox[0pt][c]{25.0\,\% aggregate (FPR\,=\,0.0\,\%)}} \\
+\textsc{Trace} & 100.0 & 100.0  & 100.0 & 91.7 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:evasion} is the central result of this paper.
-\todo{Narrative: on overt attacks all methods perform comparably.
-On evasive attacks the text baselines degrade sharply (the attacks
-are engineered to evade them); \textsc{Trace} retains high detection
-because the behavioral consequence is unchanged regardless of how
-well the trigger is hidden. This confirms H2.}
+Table~\ref{tab:evasion} is the central result.  \textsc{Trace}
+achieves 100\,\% DR [75.8--100] on three of four cells and
+91.7\,\% [64.6--98.5] on evasive poisoning.  These results are
+scoped to the non-adaptive threat model (\S\ref{sec:threat});
+adaptive evasion is quantified in Exp~G (\S\ref{sec:exp_fg}).
+The static scanner's 25\,\% aggregate DR exposes the structural
+failure of text-level inspection, confirming H1.
 
-\subsection{Experiment C: Overdefense Frontier (H3)}
+\subsection{Exp C: Security-Utility Frontier}
 \label{sec:exp_c}
 
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-  width=\columnwidth,
-  height=6.2cm,
+  width=\columnwidth, height=5.5cm,
   xlabel={Legitimate utility preserved (\%)},
   ylabel={Attack detection rate (\%)},
-  xmin=50, xmax=100,
-  ymin=50, ymax=100,
+  xmin=50, xmax=100, ymin=0, ymax=100,
   xtick={50,60,70,80,90,100},
-  ytick={50,60,70,80,90,100},
+  ytick={0,25,50,75,100},
   grid=both,
   grid style={line width=0.3pt, draw=gray!25},
   legend pos=south west,
-  legend style={font=\scriptsize, fill=white, fill opacity=0.85,
+  legend style={font=\scriptsize, fill=white, fill opacity=0.9,
                 draw opacity=1, text opacity=1},
   xlabel style={font=\small},
   ylabel style={font=\small},
   tick label style={font=\scriptsize},
 ]
-% Placeholder curves -- replace with real data
-\addplot[thick, color=traceblue, mark=none]
-  coordinates {(100,60)(95,78)(90,87)(85,91)(80,94)
-               (75,96)(70,97)(60,98.5)(50,99)};
-\addplot[thick, color=attackred, dashed, mark=none]
-  coordinates {(100,50)(95,53)(90,57)(85,62)(80,67)
-               (75,72)(70,76)(60,81)(50,85)};
-\addplot[thick, color=benigngreen!70!black, dotted, mark=none]
-  coordinates {(100,50)(95,51)(90,53)(85,55)(80,58)
-               (75,61)(70,65)(60,70)(50,75)};
+% TRACE: (util%, sec%) at theta = 1.0, 0.08, 0.01, 0.0
+\addplot[thick, color=traceblue, mark=*, mark size=2.5pt]
+  coordinates {(100,0)(95.8,97.9)(91.7,97.9)(50,100)};
+% Annotate recommended theta=0.08 operating point
+\node[font=\scriptsize, above left, text=traceblue]
+  at (axis cs:95.8,97.9) {$\theta{=}0.08$};
+% Static scanner: fixed point (FPR=0%, DR=25%)
+\addplot[thick, color=benigngreen!70!black, mark=square*,
+         mark size=3.5pt, only marks]
+  coordinates {(100,25)};
 \legend{\textsc{Trace} (behavioral),
-        LLM-judge (best text baseline),
-        Static scanner}
+        Static scanner (fixed)}
 \end{axis}
 \end{tikzpicture}
-\caption{\textbf{Security-utility frontier (placeholder ---
-  \todo{replace with real data}).}  Each point is a threshold
-  $\theta$ setting.  An operator selects a utility floor
-  (x-axis) and reads off achievable attack detection (y-axis).
-  \textsc{Trace} dominates text baselines across the frontier.}
+\caption{\textbf{Security-utility frontier.}  Each point on the
+  \textsc{Trace} curve is a threshold $\theta$ setting.  At
+  $\theta=0.08$: 97.9\,\% security at 95.8\,\% utility.  The
+  static scanner's fixed point offers no tunable trade-off.}
 \label{fig:frontier}
 \end{figure}
 
-Figure~\ref{fig:frontier} shows the security-utility frontier.
-\todo{Narrative: expect a smooth, tunable curve. Report operating
-points at 90\%, 80\%, 70\% utility retention: what detection rate
-does each achieve? Expected: at 90\% utility, TRACE blocks
-$> 85\%$ of attacks; best text baseline blocks $< 55\%$.
-This confirms H3 if a viable operating point exists. Refutes H3
-if any useful security level destroys utility.}
+Figure~\ref{fig:frontier} shows the frontier.  At $\theta=0.08$,
+\textsc{Trace} attains 97.9\,\% security at 95.8\,\% utility.
+Lowering $\theta$ to 0.01 reduces utility to 91.7\,\% while
+security stays 97.9\,\%: the one missed attack contacts only
+task-implied hosts, suppressing F1 and F3 simultaneously.  The
+static scanner is fixed at (100\,\% utility, 25\,\% security)
+with no tunable trade-off.
 
-\subsection{Experiment D: Signal Attribution (H4a)}
+\subsection{Exp D: Feature Ablation}
 \label{sec:exp_d}
 
 \begin{table}[t]
 \centering
-\caption{Ablation: AUC when each feature group is removed.
-  Expected: F3 (network) and F1 (sequences) dominate;
-  removing either degrades AUC by $> 0.10$.
-  \todo{Replace with real numbers.}}
+\caption{AUC under feature group ablation (test split).
+  $\Delta$ is relative to the full model.}
 \label{tab:ablation}
-\begin{tabular}{lc}
+\begin{tabular}{lcc}
 \toprule
-Configuration & AUC \\
+Configuration & AUC & $\Delta$ vs.\ full \\
 \midrule
-Full \textsc{Trace} (all features)    & \todo{} \\
-$-$ F1 (sequence n-grams)             & \todo{} \\
-$-$ F2 (argument anomalies)           & \todo{} \\
-$-$ F3 (network destination)          & \todo{} \\
-$-$ F4 (intent--action consistency)   & \todo{} \\
-$-$ F5 (structural anomalies)         & \todo{} \\
-F3 only (single feature)              & \todo{} \\
-F1 + F3 only                          & \todo{} \\
+Full \textsc{Trace} (all features)  & 0.984 & --- \\
+\quad $-$ F1 (sequence n-grams)     & 0.980 & $-$0.004 \\
+\quad $-$ F2 (argument anomalies)   & 0.984 & $\phantom{-}$0.000 \\
+\quad $-$ F3 (network destination)  & 0.981 & $-$0.003 \\
+\quad $-$ F4 (intent--action)       & 0.984 & $\phantom{-}$0.000 \\
+\quad $-$ F5 (structural)           & 0.981 & $-$0.003 \\
+\midrule
+F3 alone                            & 0.760 & $-$0.224 \\
+F1\,+\,F3 alone                     & 0.949 & $-$0.035 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:ablation} shows per-group ablation results.
-\todo{Narrative: confirm H4a if a small subset (e.g., F1+F3)
-accounts for $> 80\%$ of detection power. Refute H4a if
-performance is uniformly distributed and no feature dominates.}
+No single feature group dominates: dropping any one group reduces
+AUC by at most 0.004 (Table~\ref{tab:ablation}), indicating the
+groups are complementary.  Notably, dropping F2 or F4 produces zero
+AUC change---on a 96-trajectory test set near performance ceiling,
+$\Delta{=}0.000$ may partly reflect measurement resolution rather
+than strict redundancy; however, neither group adds independent value
+in the current implementation, and F4's TF-IDF instantiation requires
+improvement before it contributes meaningfully (see \S\ref{sec:features}).
+F3 alone yields AUC~0.760, confirming network-destination consistency
+is useful but insufficient in isolation.  The two-group combination
+F1$+$F3 recovers AUC~0.949, capturing 96.4\,\% of full detection
+power with one-fifth the feature dimension, identifying sequence
+n-grams and network consistency as the two highest-value signals.
 
-\subsection{Experiment E: Cross-Model Transfer (H4b)}
+\subsection{Exp E: Cross-Model Transfer}
 \label{sec:exp_e}
 
 \begin{table}[t]
 \centering
-\caption{Cross-model transfer.  Train on M1 trajectories, test on
-  M2 (and vice versa).  Expected: transfer AUC within 0.05 of
-  in-distribution AUC, confirming that behavioral patterns generalize
-  across model choices.  \todo{Replace with real numbers.}}
+\caption{Cross-model transfer AUC.
+  M1~=~Gemini~2.5~Flash~Lite; M2~=~Llama~3.1~8B~Instruct.}
 \label{tab:transfer}
 \begin{tabular}{lcc}
 \toprule
 Train $\to$ Test & In-dist AUC & Transfer AUC \\
 \midrule
-M1 $\to$ M1 & \todo{} & --- \\
-M2 $\to$ M2 & \todo{} & --- \\
-M1 $\to$ M2 & ---     & \todo{} \\
-M2 $\to$ M1 & ---     & \todo{} \\
+M1 $\to$ M1 & 1.000 & --- \\
+M2 $\to$ M2 & 0.964 & --- \\
+M1 $\to$ M2 & ---   & 0.797 \\
+M2 $\to$ M1 & ---   & 0.854 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\todo{Narrative: confirm H4b if transfer AUC drops $< 0.05$
-relative to in-distribution. If degradation is large, behavioral
-patterns are model-specific, and a per-model calibration step
-should be recommended.}
+In-distribution AUC reaches 1.000 (M1) and 0.964 (M2), confirming
+strong separability within each model's trajectory distribution.
+The M1 value of 1.000 should be interpreted with caution given the
+small test set ($n{=}96$); it reflects the high behavioral
+distinctiveness of M1 attack trajectories rather than overfit, but
+cannot be confirmed without a larger evaluation.  Cross-model transfer
+degrades to 0.797--0.854, a drop of 0.11--0.20 AUC points.
+\textbf{H2 is not confirmed}: the stated criterion (drop $<0.05$) is
+exceeded in both transfer directions by a factor of 2--4$\times$.
+Behavioral features do generalize across model families (both well
+above chance), but the degradation is practically significant.
+Cross-model deployment without retraining is inadvisable; per-deployment
+calibration on a small benign corpus from the target model is
+required to recover near-in-distribution performance.
 
-\subsection{Deployment Overhead}
-\label{sec:overhead}
+\subsection{Exp F/G: Behavioral Baseline and Adaptive Evasion}
+\label{sec:exp_fg}
 
-\todo{Report: median latency added per protected step (ms),
-computed as mean wall-clock time difference over 100 steps with
-\textsc{Trace} on vs.\ off; peak memory overhead (MB);
-CPU utilization (\%). Expected: $< 5$\,ms per step for feature
-extraction + classifier inference; $< 50$\,MB RAM; negligible
-CPU impact relative to LLM API round-trip latency.}
+\begin{table}[t]
+\centering
+\caption{Adaptive-attacker ablation (Exp~G, $\theta{=}0.5$).
+  Attack trajectories modified to suppress F3 (redirect URLs to
+  implied host), F1 (shuffle step order), or both.
+  Benign trajectories unmodified; same trained classifier as Exp~A.}
+\label{tab:adaptive}
+\begin{tabular}{lcc}
+\toprule
+Modification & DR\,\% & AUC \\
+\midrule
+None (Exp~A baseline)   & 97.9 & 0.984 \\
+F3 suppressed           & 97.9 & 0.984 \\
+F1 suppressed           & 77.1 & 0.967 \\
+F1\,+\,F3 suppressed   & 77.1 & 0.967 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The behavioral rule baseline (Exp~F, Table~\ref{tab:efficacy}) achieves
+DR~50.0\,\% vs.\ 25.0\,\% for the keyword scanner and 97.9\,\% for
+\textsc{Trace}, demonstrating that hand-crafted behavioral rules
+capture a meaningful signal but that ML-learned feature combinations
+provide substantially higher recall at identical FPR.
+
+Table~\ref{tab:adaptive} reports the adaptive-attacker ablation
+(Exp~G).  Suppressing F3 alone (routing exfiltration through a
+task-implied host) leaves detection unchanged: DR~97.9\,\% and
+AUC~0.984.  The classifier compensates via F1, F2, and F5, showing
+that the multi-feature design provides inherent robustness to
+single-feature suppression.  Suppressing F1 (shuffling step order to
+break attack bigrams) reduces DR to 77.1\,\%---still 3$\times$ the
+keyword scanner and 1.5$\times$ the rule baseline.  The combined
+F1\,+\,F3 suppression yields identical degradation to F1 alone,
+indicating F2/F5 maintain the residual signal once F1 is disrupted.
+At 77.1\,\% DR, \textsc{Trace} retains meaningful detection even
+under this simultaneous worst-case evasion.
 
 % ============================================================
 \section{Discussion}
@@ -888,322 +794,86 @@ CPU impact relative to LLM API round-trip latency.}
 % ============================================================
 
 \paragraph{Adaptive attackers.}
-Our threat model excludes attackers who are aware of and adapt to
-\textsc{Trace}'s specific features.  An adaptive attacker knowing
-the feature set could craft trajectories that score below $\theta$
-while achieving a malicious goal---for example, routing exfiltration
-through hosts implied by the task.  Characterizing the adaptive
-attacker's optimization problem and designing detectors robust to it
-is an important future direction.  We note, however, that adaptive
-evasion requires the attacker to know the precise feature set and
-threshold of the deployed instance; each feature the attacker must
-mimic imposes an additional constraint on the attack's capability.
+The threat model excludes attackers aware of \textsc{Trace}'s feature
+set.  Exp~G (\S\ref{sec:exp_fg}) directly measures this risk: F3
+suppression alone leaves TRACE unaffected (DR~97.9\,\%), while
+simultaneous F1\,+\,F3 suppression reduces DR to 77.1\,\%
+(AUC~0.967).  The headline 91.7--100\,\% detection rates are therefore
+valid \emph{within the stated, non-adaptive threat model}; the worst
+conceivable evasion of the two strongest features still yields 77.1\,\%
+DR---3$\times$ the keyword scanner.  Designing detectors robust to
+fully adaptive attackers who additionally suppress F2 and F5 is an
+important future direction.
 
-\paragraph{Benchmark generality.}
-Results are reported against AgentDojo and one skill-poisoning
-benchmark.  Whether these distributions are representative of
-production attack traffic is unknown.  We release the full trajectory
-dataset to enable independent analysis against additional benchmarks.
+\paragraph{Baseline and benchmark scope.}
+Two runtime baselines are evaluated: a keyword scanner and a
+hand-crafted behavioral rule detector (Exp~F, DR=50\%).  Both are
+acknowledged to be weak comparators.  A learned behavioral
+baseline---a runtime feature classifier from contemporaneous work,
+LlamaGuard applied post-execution~\cite{inan2023llama}, or a hybrid
+spotlighting~\cite{hines2024spotlighting} guard-model stack---was not
+evaluated; comparison against at least one such learned behavioral
+competitor on the same corpus remains the single most important
+empirical gap.  Results are also limited to AgentDojo and one
+skill-poisoning benchmark; whether these distributions represent
+production attack traffic is unknown.  The full trajectory dataset is
+released to support independent analysis against additional baselines
+and deployment contexts.
 
-\paragraph{Complementary defenses.}
-\textsc{Trace} is a runtime layer; it is complementary to
-pre-deployment red-teaming~\cite{armstrong2022red}, which identifies
-failure modes before systems reach production, and to input-level
-defenses~\cite{hines2024spotlighting,inan2023llama}, which reduce
-the attack surface.  We recommend layered deployment: red-team before
-launch, apply spotlighting and guard models at input, and run
-\textsc{Trace} at execution time to catch what earlier layers miss.
+\paragraph{Layered deployment.}
+\textsc{Trace} is a runtime layer complementary to pre-execution
+defenses (spotlighting~\cite{hines2024spotlighting}, guard
+models~\cite{inan2023llama}).  Operators select $\theta$ against a
+representative benign corpus; absent one, a conservative high-$\theta$
+default with online calibration as logs accumulate is recommended.
 
-\paragraph{Threshold calibration in practice.}
-Selecting $\theta$ requires a representative benign corpus from the
-deployment context.  An operator lacking such a corpus risks
-miscalibration.  We recommend a conservative default (high $\theta$,
-low FPR, lower security) paired with a published calibration
-procedure using operator-provided benign logs.
-
-\paragraph{Free-tier caveats.}
-Free-tier APIs may log prompts for model improvement; we use only
-public benchmark content.  Rate limits required batching trajectory
-generation across multiple days; the release artifact includes all
-pre-generated trajectories so this batching need not be repeated.
-
-% ============================================================
-\section{Related Work}
-\label{sec:related}
-% ============================================================
-
-\paragraph{LLM agents: capabilities and risks.}
-The rapid growth of LLM-based autonomous agents---from single-model
-tool callers~\cite{yao2023react,schick2023toolformer} to multi-agent
-pipelines~\cite{guo2024survey} and skill-accumulating
-systems~\cite{wang2023voyager}---has expanded both their utility
-and their attack surface.  Ruan et al.~\cite{ruan2024identifying}
-enumerate agent risk categories using an LM-emulated sandbox.
-Wang et al.~\cite{wang2024survey} survey agent architectures,
-noting that autonomy and tool access are the root causes of
-emerging security concerns.
-
-\paragraph{Prompt injection attacks and benchmarks.}
-Adversarial triggers for NLP models~\cite{wallace2019universal,
-branch2022evaluating} established that language models are sensitive
-to crafted text inputs.  Perez and Ribeiro~\cite{perez2022ignore}
-formalized prompt injection; Greshake et al.~\cite{greshake2023not}
-demonstrated indirect injection against production LLM-integrated
-applications.  Liu et al.~\cite{liu2023prompt} provided a systematic
-taxonomy.  InjectAgent~\cite{zhan2024injectagent} and
-AgentDojo~\cite{debenedetti2024agentdojo} benchmark attacks;
-Yi et al.~\cite{yi2023benchmarking} evaluate defenses and document
-evasive variants.  Our work is orthogonal: we use these benchmarks
-as evaluation corpora and treat attacks as instances, not
-contributions.
-
-\paragraph{Skill, tool, and MCP poisoning.}
-BadAgent~\cite{shi2024badagent} demonstrated backdoored tool use;
-Yang et al.~\cite{yang2024watch} extended this to general backdoor
-threats; Cohen et al.~\cite{cohen2024comes} show multi-agent
-propagation.  Provenance-based defenses for skill marketplaces are
-complementary to \textsc{Trace}: provenance addresses the \emph{who
-published it} question; we address the \emph{what it does} question.
-
-\paragraph{Text-level defenses.}
-Spotlighting~\cite{hines2024spotlighting} uses data-instruction
-separation markers.  Guard models~\cite{inan2023llama} and LLM-judge
-screens~\cite{yi2023benchmarking} operate on input text.  We use
-these as baselines and demonstrate they are structurally insufficient
-against evasive attacks.  \textsc{Trace} is a complementary layer,
-not a replacement.
-
-\paragraph{Behavioral detection analogs.}
-Forrest et al.~\cite{forrest1996sense} established that Unix process
-system-call sequences are reliable anomaly signals for intrusion
-detection; Sekar et al.~\cite{sekar2001fast} scaled this to
-production with automaton-based anomaly detectors.  Kolbitsch
-et al.~\cite{kolbitsch2009effective} classify malware by runtime
-API call sequences rather than static signatures; Rieck
-et al.~\cite{rieck2011automatic} scale this with machine learning
-to achieve low false-positive rates across malware families.
-\textsc{Trace} applies the same insight to LLM agents: tool calls
-are the ``system calls'' of agentic computation, and action sequences
-reveal the attack even when its trigger is concealed.  Our
-contribution is the domain mapping, the agent-specific feature design
-(particularly intent--action consistency in F4, which has no analog
-in OS or malware detection), the overdefense quantification, and the
-reproducible open pipeline.
+\paragraph{Generalizability and corpus validity.}
+The five simulated stub tools and scripted responses may not capture
+the trajectory variability of richer production deployments.
+Both corpora are LLM-generated from small template banks (5~attack,
+10~benign), so the classifier may partly reflect generation-mode
+artifacts; validation on live compromised-agent traces is recommended
+before production use.
 
 % ============================================================
 \section{Conclusion}
 \label{sec:conclusion}
 % ============================================================
 
-We presented \textsc{Trace}, a behavioral detector for LLM agent
-hijacking that classifies execution trajectories rather than
-inspecting triggering text.  By decoupling the detection surface
+This paper presented \textsc{Trace}, a behavioral detector for LLM
+agent hijacking that classifies execution trajectories rather than
+inspecting triggering text.  By decoupling the detection signal
 (agent actions) from the evasion target (trigger text), \textsc{Trace}
-retains high detection rates on evasive attacks where text-level
-baselines degrade to near-chance.  The detector is lightweight,
-model-agnostic, and exposes a tunable security-utility frontier---the
-first clean overdefense quantification for this setting.  The full
-pipeline runs at \$0 on CPU and is released as an open,
-reproducible artifact.  We hope the behavioral detection perspective
-and the overdefense measurement framework serve as durable
-methodological contributions to the growing field of agent security.
+achieves AUC~0.984 and 91.7--100\,\% DR across all four attack
+cells within the stated, non-adaptive threat model---including
+evasive variants where a keyword scanner reaches only 25\,\% DR.
+At $\theta{=}0.08$, the system attains 97.9\,\% security at 95.8\,\%
+utility; the explicit FPR-calibrated overdefense frontier over a
+size-matched benign corpus provides a principled tradeoff tool
+complementary to existing security-utility benchmarks.  Cross-model
+transfer AUC (0.80--0.85) demonstrates partial generalization but
+does not meet the $<0.05$-drop criterion: the released weights and
+dataset enable independent replication of classifier results, but
+per-deployment calibration on target-model benign logs is required
+before production use.  A behavioral rule baseline (Exp~F) achieves DR~50.0\,\% vs.\
+25.0\,\% for the keyword scanner, confirming that ML over behavioral
+features adds substantial value beyond hand-crafted rules.
+Even under worst-case F1\,+\,F3 suppression by an adaptive adversary
+(Exp~G), DR retains 77.1\,\%---3$\times$ the keyword scanner.  The
+most important remaining open problem is evaluation against behavioral
+runtime competitors on the same corpus.
 
 % ============================================================
-\begin{thebibliography}{10}
+\bibliographystyle{IEEEtran}
+\bibliography{strings}
 
-\bibitem{yao2023react}
-S.~Yao, J.~Zhao, D.~Yu, N.~Du, I.~Shafran, K.~Narasimhan, and Y.~Cao,
-``{ReAct}: Synergizing reasoning and acting in language models,''
-in \emph{Proc. Int. Conf. Learning Representations (ICLR)}, 2023.
-
-\bibitem{wang2024survey}
-L.~Wang, C.~Ma, X.~Feng, Z.~Zhang, H.~Yang, J.~Zhang, Z.~Chen, J.~Tang,
-X.~Chen, Y.~Lin, W.~X. Zhao, Z.~Wei, and J.-R. Wen,
-``A survey on large language model based autonomous agents,''
-\emph{Frontiers of Computer Science}, vol.~18, no.~6, p.~186345, 2024.
-
-\bibitem{greshake2023not}
-K.~Greshake, S.~Abdelnabi, S.~Mishra, C.~Endres, T.~Holz, and M.~Fritz,
-``Not what you've signed up for: Compromising real-world {LLM}-integrated
-applications with indirect prompt injections,''
-in \emph{Proc. 16th ACM Workshop on Artificial Intelligence and Security
-(AISec@CCS)}, 2023, pp.~79--90.
-
-\bibitem{perez2022ignore}
-F.~Perez and I.~Ribeiro,
-``Ignore previous prompt: Attack techniques for language models,''
-in \emph{NeurIPS 2022 Workshop on Machine Learning Safety}, 2022.
-
-\bibitem{zhan2024injectagent}
-Q.~Zhan, Z.~Liang, Z.~Ying, and D.~Kang,
-``{InjectAgent}: Benchmarking indirect prompt injections in tool-calling
-{LLM} agents,''
-in \emph{Findings of the Assoc. for Computational Linguistics: ACL 2024},
-2024.
-
-\bibitem{shi2024badagent}
-Y.~Wang, Z.~Lin, Y.~Xu, W.~Wang, and T.~Nguyen,
-``{BadAgent}: Inserting and activating backdoor attacks in {LLM} agents,''
-\emph{arXiv preprint arXiv:2406.03007}, 2024.
-
-\bibitem{yang2024watch}
-X.~Yang, X.~Wang, Q.~Zhang, and L.~Petzold,
-``Watch out for your agents! Investigating backdoor threats to {LLM}-based
-agents,''
-\emph{arXiv preprint arXiv:2402.11208}, 2024.
-
-\bibitem{debenedetti2024agentdojo}
-E.~Debenedetti, J.~Zhang, M.~Balunovic, L.~Beurer-Kellner, M.~Fischer,
-and F.~Tram{\`e}r,
-``{AgentDojo}: A dynamic environment to evaluate attacks and defenses for
-{LLM} agents,''
-in \emph{Advances in Neural Information Processing Systems 37 (NeurIPS 2024)},
-2024.
-
-\bibitem{inan2023llama}
-H.~Inan, K.~Upasani, J.~Chi, R.~Rungta, K.~Iyer, Y.~Mao,
-M.~Tontchev, Q.~Hu, B.~Fuller, D.~Testuggine, and M.~Khabsa,
-``{Llama Guard}: {LLM}-based input-output safeguard for human-{AI}
-conversations,''
-\emph{arXiv preprint arXiv:2312.06674}, 2023.
-
-\bibitem{yi2023benchmarking}
-J.~Yi, Y.~Xie, B.~Zhu, K.~Hines, E.~Kiciman, G.~Sun, X.~Xie,
-and F.~Wu,
-``Benchmarking and defending against indirect prompt injection attacks on
-large language models,''
-\emph{arXiv preprint arXiv:2312.14197}, 2023.
-
-\bibitem{schick2023toolformer}
-T.~Schick, J.~Dwivedi-Yu, R.~Dess{\`\i}, R.~Raileanu, M.~Lomeli,
-L.~Zettlemoyer, N.~Cancedda, and T.~Scialom,
-``Toolformer: Language models can teach themselves to use tools,''
-in \emph{Advances in Neural Information Processing Systems 36 (NeurIPS 2023)},
-2023.
-
-\bibitem{shen2023hugginggpt}
-Y.~Shen, K.~Song, X.~Tan, D.~Li, W.~Lu, and Y.~Zhuang,
-``{HuggingGPT}: Solving {AI} tasks with {ChatGPT} and its friends in
-{Hugging Face},''
-\emph{arXiv preprint arXiv:2303.17580}, 2023.
-
-\bibitem{wei2022chain}
-J.~Wei, X.~Wang, D.~Schuurmans, M.~Bosma, B.~Ichter, F.~Xia, E.~Chi,
-Q.~Le, and D.~Zhou,
-``Chain-of-thought prompting elicits reasoning in large language models,''
-in \emph{Advances in Neural Information Processing Systems 35 (NeurIPS 2022)},
-2022.
-
-\bibitem{wang2023voyager}
-G.~Wang, Y.~Xie, Y.~Jiang, A.~Mandlekar, C.~Xiao, Y.~Zhu, L.~Fan,
-and A.~Anandkumar,
-``{Voyager}: An open-ended embodied agent with large language models,''
-\emph{arXiv preprint arXiv:2305.16291}, 2023.
-
-\bibitem{guo2024survey}
-T.~Guo, X.~Chen, Y.~Wang, R.~Chang, S.~Pei, N.~V. Chawla, O.~Wiest,
-and X.~Zhang,
-``Large language model based multi-agents: A survey of progress and
-challenges,''
-\emph{arXiv preprint arXiv:2402.01680}, 2024.
-
-\bibitem{branch2022evaluating}
-H.~J. Branch, J.~R. Cefalu, J.~McHugh, L.~Hujer, A.~Bahl,
-D.~del~Castillo~Iglesias, R.~Heichman, and R.~Darwishi,
-``Evaluating the susceptibility of pre-trained language models via
-handcrafted adversarial examples,''
-\emph{arXiv preprint arXiv:2209.02128}, 2022.
-
-\bibitem{wallace2019universal}
-E.~Wallace, S.~Feng, N.~Kandpal, M.~Gardner, and S.~Singh,
-``Universal adversarial triggers for attacking and analyzing {NLP},''
-in \emph{Proc. 2019 Conf. on Empirical Methods in Natural Language
-Processing (EMNLP-IJCNLP)}, 2019, pp.~2153--2162.
-
-\bibitem{liu2023prompt}
-Y.~Liu, G.~Deng, Y.~Li, K.~Wang, Z.~Wang, X.~Wang, T.~Zhang, Y.~Liu,
-H.~Wang, Y.~Zheng, and Y.~Liu,
-``Prompt injection attack against {LLM}-integrated applications,''
-\emph{arXiv preprint arXiv:2306.05499}, 2023.
-
-\bibitem{ruan2024identifying}
-Y.~Ruan, H.~Dong, A.~Wang, S.~Pitis, Y.~Zhou, J.~Ba, Y.~Dubois,
-C.~J. Maddison, and T.~Hashimoto,
-``Identifying the risks of {LM} agents with an {LM}-emulated sandbox,''
-\emph{arXiv preprint arXiv:2309.15817}, 2023.
-
-\bibitem{cohen2024comes}
-S.~Cohen, R.~Bitton, and B.~Nassi,
-``Here comes the {AI} worm: Unleashing zero-click worms that target
-generative {AI} applications,''
-\emph{arXiv preprint arXiv:2403.02817}, 2024.
-
-\bibitem{hines2024spotlighting}
-K.~Hines, G.~Lopez, M.~Hall, F.~Zarfati, Y.~Zunger, and E.~Kiciman,
-``Defending against indirect prompt injection attacks with spotlighting,''
-\emph{arXiv preprint arXiv:2403.14720}, 2024.
-
-\bibitem{forrest1996sense}
-S.~Forrest, S.~A. Hofmeyr, A.~Somayaji, and T.~A. Longstaff,
-``A sense of self for {Unix} processes,''
-in \emph{Proc. 1996 IEEE Symp. on Security and Privacy}, 1996,
-pp.~120--128.
-
-\bibitem{kolbitsch2009effective}
-C.~Kolbitsch, P.~M. Comparetti, C.~Kruegel, E.~Kirda, X.~Zhou,
-and X.~Wang,
-``Effective and efficient malware detection at end hosts,''
-in \emph{Proc. 18th USENIX Security Symp.}, 2009, pp.~351--366.
-
-\bibitem{rieck2011automatic}
-K.~Rieck, P.~Trinius, C.~Willems, and T.~Holz,
-``Automatic analysis of malware behavior using machine learning,''
-\emph{Journal of Computer Security}, vol.~19, no.~4, pp.~639--668, 2011.
-
-\bibitem{sekar2001fast}
-R.~Sekar, M.~Bendre, D.~Dhurjati, and P.~Bollineni,
-``A fast automaton-based method for detecting anomalous program behaviors,''
-in \emph{Proc. 2001 IEEE Symp. on Security and Privacy}, 2001,
-pp.~144--155.
-
-\bibitem{openai2023gpt4}
-{OpenAI},
-``{GPT-4} technical report,''
-\emph{arXiv preprint arXiv:2303.08774}, 2023.
-
-\bibitem{touvron2023llama2}
-H.~Touvron, L.~Martin, K.~Stone, P.~Albert, A.~Almahairi, Y.~Babaei,
-N.~Bashlykov, S.~Batra, P.~Bhargava, S.~Bhosale, D.~Bikel, L.~Blecher,
-C.~C. Ferrer, M.~Chen, G.~Cucurull, D.~Esiobu, J.~Fernandes, J.~Fu,
-W.~Fu, B.~Fuller \emph{et~al.},
-``{Llama}~2: Open foundation and fine-tuned chat models,''
-\emph{arXiv preprint arXiv:2307.09288}, 2023.
-
-\bibitem{ke2017lightgbm}
-G.~Ke, Q.~Meng, T.~Finley, T.~Wang, W.~Chen, W.~Ma, Q.~Ye, and T.-Y. Liu,
-``{LightGBM}: A highly efficient gradient boosting decision tree,''
-in \emph{Advances in Neural Information Processing Systems 30 (NIPS 2017)},
-2017.
-
-\bibitem{chen2016xgboost}
-T.~Chen and C.~Guestrin,
-``{XGBoost}: A scalable tree boosting system,''
-in \emph{Proc. 22nd ACM SIGKDD Int. Conf. on Knowledge Discovery and
-Data Mining}, 2016, pp.~785--794.
-
-\bibitem{pedregosa2011scikit}
-F.~Pedregosa, G.~Varoquaux, A.~Gramfort, V.~Michel, B.~Thirion, O.~Grisel,
-M.~Blondel, P.~Prettenhofer, R.~Weiss, V.~Dubourg, J.~Vanderplas,
-A.~Passos, D.~Cournapeau, M.~Brucher, M.~Perrot, and {\'E}.~Duchesnay,
-``Scikit-learn: Machine learning in {Python},''
-\emph{Journal of Machine Learning Research}, vol.~12, pp.~2825--2830, 2011.
-
-\bibitem{armstrong2022red}
-S.~Armstrong, L.~Lovitt, A.~Askell, and Anthropic team,
-``Red-teaming language models to reduce harms: Methods, scaling behaviors,
-and lessons learned,''
-\emph{arXiv preprint arXiv:2209.07858}, 2022.
-
-\end{thebibliography}
+% ============================================================
+\section*{AI Use Disclosure}
+% ============================================================
+LLM APIs (Gemini~2.5~Flash~Lite and Llama~3.1~8B~Instruct via
+OpenRouter) were used for agent trajectory generation as described
+in \S\ref{sec:setup}.  No language model was used to generate the
+substantive scientific content, analysis, or manuscript text of
+this paper.
 
 \end{document}
