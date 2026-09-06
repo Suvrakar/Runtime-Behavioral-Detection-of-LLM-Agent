@@ -71,10 +71,54 @@
 
 ---
 
-## Summary Statistics
+## Summary Statistics (Round 1)
 
 | Category | Total issues | Fixed in text | Requires experiment | Deferred/partial |
 |----------|-------------|---------------|--------------------|--------------------|
 | Major | 7 | 5 (M1,M2,M4,M5,M6,M7 — text portion) | 3 (M3,M4,M6 — new data) | 1 (M3 baseline) |
 | Minor | 17 | 15 | 0 | 2 (13, 2-partial) |
 | **Total** | **24** | **19** | **3** | **3** |
+
+---
+
+## Round 2 Peer Review Response
+
+**Review date:** September 6, 2026 (second review)
+
+### Major Comments
+
+| # | Issue | Action | Status | Files changed |
+|---|-------|--------|--------|---------------|
+| M1 | Missing prior art: TraceAegis, PIDS literature (Kairos, Zipperle survey) make the same OS-to-agent analogy | Rewrote §II-D to acknowledge PIDS literature and contemporaneous agent-security systems; added `\cite{zipperle2022pids,cheng2024kairos}` for the PIDS grounding; reframed contributions as FPR-calibrated frontier + one-command reproducibility rather than "domain mapping"; added explicit ASB vs CyberSecEval2 contrast (Minor 13 also fixed here) | **Fixed in text** | `paper.tex §II-D`, `strings.bib` |
+| M2 | No learned baseline (LR over bigrams, XGBoost/GNN competitors exist) | Acknowledged in §VII-b (already) and REVIEW_RESPONSE; implementing a logistic-regression-over-F1 baseline requires re-running experiments — deferred as future experiment | **Deferred** — requires new experiment run | — |
+| M3 | Train/test template overlap inflates AUC; template-disjoint split needed | §V-B already discloses the confound explicitly; implementing a leave-template-out split requires regenerating trajectories with held-out templates — deferred | **Deferred** — requires new data generation | — |
+| M4 | Simulated stubs limit external validity; should be foregrounded | Promoted stub limitation note into §V-A (agent environment) rather than burying in §VII; §VII limitation paragraph retained | **Fixed in text** | `paper.tex §V-A` |
+| M5 | Over ICCIT 6-page limit | Multiple rounds of cutting brought paper to 6 pages | **Fixed** | `paper.tex` |
+| M6 | Abstract omits negative H2 cross-model result | Added one sentence to Abstract: "Cross-model transfer AUC (0.80–0.85) does not meet the stated <0.05-drop criterion: per-deployment recalibration is required." | **Fixed** | `paper.tex Abstract` |
+
+### Minor Comments
+
+| # | Issue | Action | Status |
+|---|-------|--------|--------|
+| 1/12 | "no inference cost" overclaims | Changed to "negligible inference cost"; removed vague clause | **Fixed** |
+| 2 | F4 contributes 0.000 AUC — drop or invest | Retained with existing "TF-IDF contributes minimally" caveat; dropping F4 would require re-running all experiments | **Partially fixed** (text caveat) |
+| 3 | §III scope vs Exp G tension | Revised §III Scope to explicitly include "partial adaptive evasion (Exp G)" as in-scope and clarify out-of-scope as "full adaptive evasion" | **Fixed** |
+| 4 | Table IV (−0.004 AUC) vs Table VI (−20.8 DR) unexplained | Added one sentence to §VI-D: "redundant-but-load-bearing features behave differently under retraining versus adversarial corruption at test time" | **Fixed** |
+| 5 | Hyperparameter selection unclear | Added "selected by grid search on the validation split with no further tuning on the test set" to §IV-C | **Fixed** |
+| 6 | Both models are small/cheap tiers | Added note in §V-A: "both smaller/cheaper tiers; larger planning models may produce different F1/F5 feature distributions" | **Fixed** |
+| 7 | CPU spec not given | Changed "standard laptop CPU" to "mid-range laptop CPU"; full CPU model omitted (double-blind) | **Partially fixed** |
+| 8 | Table III wide CIs — state in body | Added note in §VI-B body: "wide CI reflects n=12 per cell; point estimates should not be over-indexed" | **Fixed** |
+| 9 | AUC 0.984 lacks bootstrapped CI | Not added — would require code change and new run; noted as limitation | **Deferred** |
+| 10 | One-miss mechanism explained at wrong location | Kept explanation in §VI-C where it first matters for the threshold discussion; §VI-B now notes the wide CIs instead | **Partially fixed** |
+| 11 | Artifact anonymized upload | Informational — no text change needed | N/A |
+| 13 | ASB/CyberSecEval2 contrast missing | Added explicit "neither provides a per-deployment FPR-calibrated frontier" contrast in §II-D | **Fixed** (folded into M1) |
+| 14 | Citation packing | §II-D rewritten to distribute citations across sentences | **Fixed** |
+
+### Changes NOT Made (Round 2)
+
+| Item | Reason |
+|------|--------|
+| TraceAegis, Zavrak 2026, Yu et al. 2026 citations | Paper titles appear in reviewer report but full bibliographic details and existence were not independently verified — citing unverified papers risks hallucinated references. §II-D acknowledges the concurrent work trend without fabricating citations. Search and add before camera-ready. |
+| Logistic regression learned baseline (M2) | Requires re-running experiment pipeline; deferred |
+| Template-disjoint split (M3) | Requires generating new held-out task templates and re-running; deferred |
+| Bootstrapped AUC CI (Minor 9) | Requires code change and re-run |

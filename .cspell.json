@@ -46,7 +46,9 @@
     "Dubey", "Jauhri", "Pandey", "Kadian", "Dahle", "Letman",
     "overfit", "overfits", "overfitting",
     "Bhatt", "Chennabasappa", "Nikolaidis", "Saxe", "Aschermann",
-    "agentsecuritybench", "cyberseceval", "CyberSecEval"
+    "agentsecuritybench", "cyberseceval", "CyberSecEval",
+    "Zipperle", "Gottwalt", "Dillon", "Zijun", "Qiushi", "Yueqi",
+    "Kangjie", "Zhiqiang", "Guofei", "Kairos", "zipperle", "cheng"
   ],
   "ignorePaths": [
     "*.bib",
