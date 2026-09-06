@@ -48,7 +48,11 @@
     "Bhatt", "Chennabasappa", "Nikolaidis", "Saxe", "Aschermann",
     "agentsecuritybench", "cyberseceval", "CyberSecEval",
     "Zipperle", "Gottwalt", "Dillon", "Zijun", "Qiushi", "Yueqi",
-    "Kangjie", "Zhiqiang", "Guofei", "Kairos", "zipperle", "cheng"
+    "Kangjie", "Zhiqiang", "Guofei", "Kairos", "zipperle", "cheng",
+    "Sequeira", "Damianakis", "Psounis", "Yingcheng", "Qianqian",
+    "TraceAegis", "traceaegis", "agentsentry", "frauddetection",
+    "Bonan", "Ruan", "Xianglin", "Zhiwei",
+    "hyperparameters"
   ],
   "ignorePaths": [
     "*.bib",

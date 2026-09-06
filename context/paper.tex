@@ -263,8 +263,10 @@ extend this to malware via ML~\cite{buczak2016survey}; provenance-based IDS
 (PIDS)~\cite{zipperle2022pids,cheng2024kairos} has since instantiated
 the same analogy on modern systems.  The 2024--2026 LLM-agent security
 literature has independently converged on the OS-to-agent trajectory
-insight, with contemporaneous systems applying hierarchical and
-provenance-based behavioral detection to agent traces.
+insight: TraceAegis~\cite{liu2025traceaegis} uses hierarchical
+execution-trace anomaly detection; Agent-Sentry~\cite{sequeira2026agentsentry}
+bounds agents via learned execution-provenance; Yu et al.~\cite{yu2026frauddetection}
+apply fraud-inspired trajectory features with an XGBoost classifier.
 Agent Security Bench~\cite{zhang2024agentsecuritybench} formalizes an
 aggregate security-utility balance metric; CyberSecEval~2~\cite{bhatt2024cyberseceval2}
 introduces a False Refusal Rate; neither provides a per-deployment
