@@ -155,12 +155,10 @@ perception-action loop that iteratively generates actions, executes
 them, and observes results~\cite{schick2023toolformer,guo2024survey}.
 The ReAct framework~\cite{yao2023react} interleaves chain-of-thought
 reasoning~\cite{wei2022chain} with action calls.
-Some agents accumulate reusable skills in a growing
-library~\cite{wang2023voyager}, making the skill-loader a first-class
-attack surface.  In all paradigms the agent's \emph{trajectory}---the
-ordered sequence of (thought, action, observation) tuples---is the
-primary record of what the agent did and why.  This record serves as
-the detection surface for \textsc{Trace}.
+In all paradigms---including skill-accumulating
+agents~\cite{wang2023voyager}---the \emph{trajectory} (ordered
+sequence of thought, action, observation tuples) is the primary
+record of what the agent did and the detection surface for \textsc{Trace}.
 
 \subsection{Attack Families and Benchmarks}
 
@@ -179,8 +177,7 @@ networks~\cite{gu2019badnets,li2022backdoor} established the
 theoretical basis for training-time compromise.  Wang et
 al.~\cite{shi2024badagent} extended this to LLM agents via BadAgent;
 Yang et al.~\cite{yang2024watch} broadened backdoor threats to general
-tool use; Cohen et al.~\cite{cohen2024comes} demonstrated multi-agent
-propagation.
+tool use.
 
 \begin{figure}[t]
 \centering
@@ -273,13 +270,10 @@ Zavrak~\cite{zavrak2026contentaware}              & IPI & $\times$ & $\times$ \\
 
 \subsection{Behavioral Detection Analogs}
 
-Behavioral anomaly detection originates with Denning~\cite{denning1987intrusion};
-Forrest et al.~\cite{forrest1996sense} and Sekar et al.~\cite{sekar2001fast}
-applied it to OS system-call sequences; Kolbitsch et
-al.~\cite{kolbitsch2009effective} and Rieck et al.~\cite{rieck2011automatic}
-extend this to malware via ML~\cite{buczak2016survey}; provenance-based IDS
-(PIDS)~\cite{zipperle2022pids,cheng2024kairos} has since instantiated
-the same analogy on modern systems.  The 2024--2026 literature converges on the agent-trajectory insight:
+The OS/malware behavioral-anomaly tradition~\cite{forrest1996sense,
+sekar2001fast,rieck2011automatic,buczak2016survey} and provenance-based
+IDS~\cite{zipperle2022pids,cheng2024kairos} ground the 2024--2026
+convergence on agent trajectories:
 TraceAegis~\cite{liu2025traceaegis} uses hierarchical execution-trace
 anomaly detection; Agent-Sentry~\cite{sequeira2026agentsentry} bounds
 agents via learned provenance; Yu et al.~\cite{yu2026frauddetection}
@@ -388,14 +382,11 @@ operator control for the security-utility tradeoff.}
 
 \subsection{Instrumentation and Telemetry}
 
-\textsc{Trace} attaches a thin wrapper between the agent framework
-and its tool executor.  For each tool call, the wrapper appends a
-structured event to the run log:
-$\{\mathit{step}, \mathit{tool}, \mathit{args}, \mathit{result\_ok},
-\mathit{ts\_ms}\}$.
-The wrapper does not modify agent behavior or require model internals
-access.  Logs can be consumed offline (run-level detection) or
-incrementally (step-level early termination, a planned extension).
+\textsc{Trace} attaches a thin wrapper that appends a structured event
+$\{\mathit{step}, \mathit{tool}, \mathit{args}, \mathit{result\_ok}\}$
+per tool call, without modifying agent behavior or accessing model
+internals.  Logs support offline (run-level) or incremental
+(step-level early termination) consumption.
 
 \subsection{Feature Extraction}
 \label{sec:features}
@@ -805,12 +796,10 @@ under this simultaneous worst-case evasion.
 % ============================================================
 
 \paragraph{Adaptive attackers.}
-Exp~G quantifies adaptive risk directly: F3 suppression alone leaves
-DR unchanged at 97.9\,\%; simultaneous F1\,+\,F3 suppression reduces
-DR to 77.1\,\% (AUC~0.967)---still 3$\times$ the keyword scanner.
-The headline 91.7--100\,\% rates are valid within the stated
-non-adaptive threat model; full F2/F5 suppression remains future
-work.
+Table~\ref{tab:adaptive} shows simultaneous F1\,+\,F3 suppression
+reduces DR to 77.1\,\% (AUC~0.967)---still 3$\times$ the keyword
+scanner.  The 91.7--100\,\% rates hold within the stated non-adaptive
+model; full F2/F5 suppression remains future work.
 
 \paragraph{Benchmark scope.}
 Results remain limited to two generator models and stub tools
@@ -832,16 +821,13 @@ compromised-agent traces is recommended before deployment.
 
 \textsc{Trace} decouples detection (post-execution actions) from
 evasion (pre-execution text), achieving AUC~0.984 and 91.7--100\,\%
-DR across all four attack cells within the stated non-adaptive threat
-model, against 25\,\% for a keyword scanner and 50\,\% for a
-behavioral rule baseline (Exp~F).  At $\theta{=}0.08$: 97.9\,\%
-security at 95.8\,\% utility.  The FPR-calibrated overdefense
-frontier provides a principled tradeoff tool complementary to
-existing security-utility benchmarks.  Cross-model transfer
-(AUC~0.80--0.85) does not meet the $<0.05$-drop criterion;
-per-deployment calibration is required.  Under worst-case F1\,+\,F3 adaptive suppression (Exp~G), DR retains
-77.1\,\%.  Full adaptive evasion and production-trace validation
-remain open.
+DR across all four attack cells (vs.\ 25\,\% keyword, 50\,\% rule,
+97.9\,\% RF at higher FPR~6.2\,\%).  At $\theta{=}0.08$: 97.9\,\%
+security, 95.8\,\% utility; the FPR-calibrated frontier enables
+principled threshold selection.  Cross-model transfer (AUC~0.80--0.85)
+requires per-deployment calibration; worst-case F1\,+\,F3 evasion
+retains DR~77.1\,\%.  Full adaptive evasion and production-trace
+validation remain open.
 
 % ============================================================
 \bibliographystyle{IEEEtran}
