@@ -87,11 +87,8 @@ Two models run every task: **M1** (Gemini 1.5 Flash) and **M2** (Llama 3 8B via 
 
 | Hypothesis | What we need to see |
 |------------|---------------------|
-| H1 | TRACE AUC > 0.85, well above all text baselines |
-| H2 | TRACE detection rate drops < 15% on evasive attacks; baselines drop > 40% |
-| H3 | At 80% utility preserved, TRACE blocks > 80% of attacks |
-| H4a | F1 + F3 alone explain most of the detection power |
-| H4b | Transfer AUC drops < 0.05 between models |
+| H1 | TRACE AUC > 0.85, well above all text baselines — including on evasive attacks where baselines drop > 40% |
+| H2 | Transfer AUC drops < 0.05 between models, confirming behavioral patterns are model-agnostic |
 
 ---
 

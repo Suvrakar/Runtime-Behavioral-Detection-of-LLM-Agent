@@ -90,8 +90,8 @@
 | # | Issue | Action | Status | Files changed |
 |---|-------|--------|--------|---------------|
 | M1 | Missing prior art: TraceAegis, PIDS literature (Kairos, Zipperle survey) make the same OS-to-agent analogy | Rewrote §II-D to acknowledge PIDS literature and contemporaneous agent-security systems; added `\cite{zipperle2022pids,cheng2024kairos}` for the PIDS grounding; reframed contributions as FPR-calibrated frontier + one-command reproducibility rather than "domain mapping"; added explicit ASB vs CyberSecEval2 contrast (Minor 13 also fixed here) | **Fixed in text** | `paper.tex §II-D`, `strings.bib` |
-| M2 | No learned baseline (LR over bigrams, XGBoost/GNN competitors exist) | Acknowledged in §VII-b (already) and REVIEW_RESPONSE; implementing a logistic-regression-over-F1 baseline requires re-running experiments — deferred as future experiment | **Deferred** — requires new experiment run | — |
-| M3 | Train/test template overlap inflates AUC; template-disjoint split needed | §V-B already discloses the confound explicitly; implementing a leave-template-out split requires regenerating trajectories with held-out templates — deferred | **Deferred** — requires new data generation | — |
+| M2 | No learned baseline (LR over bigrams, XGBoost/GNN competitors exist) | Added Exp M2: logistic regression on F1 features (15-dim tool bigrams/unigrams). Results: AUC=0.962, DR=79.2% [65.7–88.2], FPR=4.2%. Added "LR (F1 only)" row to Table II. Script: `experiments/run_m2_m3.py`. No new API calls required — computed from existing checkpoints. | **Fixed (new experiment)** | `paper.tex Table II`, `experiments/run_m2_m3.py`, `results/experiments.json` |
+| M3 | Train/test template overlap inflates AUC; template-disjoint split needed | Implemented leave-one-template-out CV (Exp M3) over 5 folds; refits TF-IDF per fold. Results: macro AUC=0.996, DR=97.5%, FPR=1.2%, confirming metrics are not inflated by template memorization. Added to §V-B. Script: `experiments/run_m2_m3.py`. | **Fixed (new experiment)** | `paper.tex §V-B`, `experiments/run_m2_m3.py`, `results/experiments.json` |
 | M4 | Simulated stubs limit external validity; should be foregrounded | Promoted stub limitation note into §V-A (agent environment) rather than burying in §VII; §VII limitation paragraph retained | **Fixed in text** | `paper.tex §V-A` |
 | M5 | Over ICCIT 6-page limit | Multiple rounds of cutting brought paper to 6 pages | **Fixed** | `paper.tex` |
 | M6 | Abstract omits negative H2 cross-model result | Added one sentence to Abstract: "Cross-model transfer AUC (0.80–0.85) does not meet the stated <0.05-drop criterion: per-deployment recalibration is required." | **Fixed** | `paper.tex Abstract` |
@@ -119,6 +119,4 @@
 | Item | Reason |
 |------|--------|
 | TraceAegis, Zavrak 2026, Yu et al. 2026 citations | Paper titles appear in reviewer report but full bibliographic details and existence were not independently verified — citing unverified papers risks hallucinated references. §II-D acknowledges the concurrent work trend without fabricating citations. Search and add before camera-ready. |
-| Logistic regression learned baseline (M2) | Requires re-running experiment pipeline; deferred |
-| Template-disjoint split (M3) | Requires generating new held-out task templates and re-running; deferred |
 | Bootstrapped AUC CI (Minor 9) | Requires code change and re-run |

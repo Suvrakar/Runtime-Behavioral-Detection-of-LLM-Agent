@@ -487,7 +487,9 @@ stratified by attack cell, generator model, and unique instance.
 Because the template bank is small (5~attack, 10~benign), all
 template families appear in both train and test; the split tests
 generalization across instance variation rather than held-out task
-semantics.  All reported metrics are on the held-out test split
+semantics.  Leave-one-template-out CV (Exp~M3) confirms stability:
+macro AUC~0.996, DR~97.5\,\%, FPR~1.2\,\%.
+All reported metrics are on the held-out test split
 (96~trajectories: 48~attack, 48~benign).
 
 \begin{table}[t]
@@ -545,6 +547,7 @@ Method & AUC & DR\,\% [95\,\%\,CI] & FPR\,\% \\
 \midrule
 Static scanner      & n/a   & 25.0\;[14.9--38.8] & 0.0 \\
 Behavioral rules    & n/a   & 50.0\;[36.1--63.9] & 0.0 \\
+LR (F1 only)        & 0.962 & 79.2\;[65.7--88.2] & 4.2 \\
 \textsc{Trace}      & 0.984 & 97.9\;[89.1--99.6] & 4.2 \\
 \bottomrule
 \end{tabular}
