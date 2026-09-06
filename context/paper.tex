@@ -385,8 +385,14 @@ operator control for the security-utility tradeoff.}
 \textsc{Trace} attaches a thin wrapper that appends a structured event
 $\{\mathit{step}, \mathit{tool}, \mathit{args}, \mathit{result\_ok}\}$
 per tool call, without modifying agent behavior or accessing model
-internals.  Logs support offline (run-level) or incremental
-(step-level early termination) consumption.
+internals.  Logs support two consumption modes.  In \emph{run-level}
+mode the completed trajectory is classified before downstream systems
+consume its outputs (reports, file commits, API responses); the
+\texttt{BLOCK} signal prevents output propagation and triggers incident
+response, but does not reverse tool calls already executed.  In
+\emph{incremental} mode (planned extension, not evaluated here) the
+flag is raised after each step, enabling mid-run interruption before
+irreversible actions complete.
 
 \subsection{Feature Extraction}
 \label{sec:features}
@@ -763,6 +769,17 @@ model; full F2/F5 suppression remains future work.
 Results remain limited to two generator models and stub tools
 (Table~\ref{tab:comparison} places \textsc{Trace} in context);
 the released corpus enables independent comparison.
+
+\paragraph{Detection timing and harm prevention.}
+Run-level detection flags trajectories \emph{after} execution
+completes; it cannot reverse tool calls already issued.  Its value
+lies in preventing downstream consumption of a flagged run's outputs
+(blocking file commits, API responses, or report delivery) and
+triggering incident response.  Deployments where individual tool
+calls have immediate, irreversible side effects require incremental
+step-level detection---architecturally supported but not yet
+evaluated.  Characterizing the harm-prevention window across
+deployment scenarios is a key open direction.
 
 \paragraph{Deployment and generalizability.}
 \textsc{Trace} is a runtime layer complementary to pre-execution
