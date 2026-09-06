@@ -52,7 +52,13 @@
     "Sequeira", "Damianakis", "Psounis", "Yingcheng", "Qianqian",
     "TraceAegis", "traceaegis", "agentsentry", "frauddetection",
     "Bonan", "Ruan", "Xianglin", "Zhiwei",
-    "hyperparameters", "PIDS"
+    "hyperparameters", "PIDS",
+    "Zavrak", "zavrak", "Peiran", "Yunfei", "Yifeng", "Qingyou",
+    "Kaijie", "Xianjun", "Jindong", "Wenbo",
+    "Hengyu", "Jinghuai", "Chunyi", "Qingming", "Shouling",
+    "Haohua", "Guanquan", "Junyang", "HaoRan", "Yunhao", "Kaiwen",
+    "Chowdary", "Sanna", "IPIGuard", "MELON", "DRIFT", "MindGuard",
+    "AgentArmor", "agentarmor", "mindguard"
   ],
   "ignorePaths": [
     "*.bib",

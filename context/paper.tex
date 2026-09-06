@@ -53,9 +53,9 @@
 \title{Runtime Behavioral Detection of LLM Agent Hijacking\\
 from Execution Trajectories}
 
-\author{\IEEEauthorblockN{Anonymous Authors}
-\IEEEauthorblockA{Double-blind submission to ICCIT 2026\\
-Do not distribute}}
+% \author{\IEEEauthorblockN{Anonymous Authors}
+% \IEEEauthorblockA{Double-blind submission to ICCIT 2026\\
+% Do not distribute}}
 
 % ============================================================
 \begin{document}
@@ -83,8 +83,6 @@ while preserving 95.8\,\% legitimate utility at the recommended
 operating threshold.
 The detector runs on CPU with negligible inference cost; the corpus
 and trained weights are released as an open, reproducible artifact.
-Cross-model transfer AUC (0.80--0.85) does not meet the stated
-$<0.05$-drop criterion: per-deployment recalibration is required.
 \end{abstract}
 
 % ============================================================
@@ -113,7 +111,8 @@ to look benign at the text level.  Payload-less skills carry no
 suspicious description yet execute harmful actions at invocation.
 Position-aware injections restructure payloads to defeat
 pattern-matching.  When the triggering text is clean, no text-level
-defense has any signal.
+defense has any signal; execution-level approaches address this at
+the cost of re-execution overhead or program-analysis infrastructure.
 
 \paragraph{Key insight.}
 The trigger can be hidden.  The \emph{consequence} cannot.  A
@@ -242,16 +241,19 @@ all four cells.}
 
 \subsection{Text-Level Defenses}
 
-Static scanners match skill descriptions against deny-lists of known
-injection signatures~\cite{zhan2024injectagent}.  Guard
-models~\cite{inan2023llama} classify raw inputs.  LLM-judge
-screens~\cite{yi2023benchmarking} ask a separate model to evaluate
-retrieved content.  Spotlighting~\cite{hines2024spotlighting} marks
-retrieved content with special tokens.  All four inspect \emph{text
-before execution}: an evasive attack that yields clean text passes
-all of them.  This is not a calibration failure---it is structural.
-The attack surface and the detection surface are the same, so an
-attacker can optimize directly against the detector.
+Static scanners, guard models~\cite{inan2023llama}, LLM-judge
+screens~\cite{yi2023benchmarking}, and Spotlighting~\cite{hines2024spotlighting}
+all inspect \emph{text before execution}: evasive attacks with clean
+text evade all of them structurally.
+A 2025 cluster addresses this at the execution level:
+AgentArmor~\cite{wang2025agentarmor} enforces a program-analysis type
+system over runtime traces; MELON~\cite{zhu2025melon} re-executes
+trajectories under a masked prompt; DRIFT~\cite{li2025drift} and
+IPIGuard~\cite{an2025ipiguard} validate against tool-dependency graphs.
+\textsc{Trace} takes a distinct position: a learned ML classifier over
+hand-engineered behavioral features, covering both injection \emph{and}
+poisoning families, requiring no re-execution or program-analysis
+infrastructure.
 
 \subsection{Behavioral Detection Analogs}
 
@@ -261,20 +263,20 @@ applied it to OS system-call sequences; Kolbitsch et
 al.~\cite{kolbitsch2009effective} and Rieck et al.~\cite{rieck2011automatic}
 extend this to malware via ML~\cite{buczak2016survey}; provenance-based IDS
 (PIDS)~\cite{zipperle2022pids,cheng2024kairos} has since instantiated
-the same analogy on modern systems.  The 2024--2026 LLM-agent security
-literature has independently converged on the OS-to-agent trajectory
-insight: TraceAegis~\cite{liu2025traceaegis} uses hierarchical
-execution-trace anomaly detection; Agent-Sentry~\cite{sequeira2026agentsentry}
-bounds agents via learned execution-provenance; Yu et al.~\cite{yu2026frauddetection}
-apply fraud-inspired trajectory features with an XGBoost classifier.
-Agent Security Bench~\cite{zhang2024agentsecuritybench} formalizes an
-aggregate security-utility balance metric; CyberSecEval~2~\cite{bhatt2024cyberseceval2}
-introduces a False Refusal Rate; neither provides a per-deployment
-FPR-calibrated operating-point frontier.  TRACE's contributions are
-therefore scoped to: an \emph{FPR-calibrated} overdefense frontier
-(tunable $\theta$ over a size-matched benign corpus, distinct from
-both ASB's aggregate metric and CyberSecEval~2's FRR); and a CPU-only,
-model-internals-free detector with one-command open reproducibility.
+the same analogy on modern systems.  The 2024--2026 literature converges on the agent-trajectory insight:
+TraceAegis~\cite{liu2025traceaegis} uses hierarchical execution-trace
+anomaly detection; Agent-Sentry~\cite{sequeira2026agentsentry} bounds
+agents via learned provenance; Yu et al.~\cite{yu2026frauddetection}
+apply fraud-inspired features with XGBoost.
+Zavrak~\cite{zavrak2026contentaware} evaluates XGBoost/GNN classifiers
+on MCP tool-call traffic (AUROC~0.975) and flags that naive random
+splits inflate results by up to 26~pp vs.\ task-stratified protocols.
+\textsc{Trace}'s distinctions from this cluster are cross-attack-family
+coverage (injection \emph{and} poisoning, not IPI-only), hand-engineered
+features without content embeddings, and an \emph{FPR-calibrated}
+overdefense frontier not provided by
+ASB~\cite{zhang2024agentsecuritybench} or
+CyberSecEval~2~\cite{bhatt2024cyberseceval2}.
 
 % ============================================================
 \section{Threat Model}
@@ -313,7 +315,9 @@ produces natively.
 and tool poisoning (overt and evasive); partial adaptive evasion of
 known features (Exp~G, a first step toward fully adaptive analysis).
 \emph{Out of scope:} base-model jailbreaks; full adaptive evasion of
-the complete feature set; attacks on the detector itself.
+the complete feature set; attacks on the detector itself; and
+never-invoked poisoning~\cite{wang2025mindguard} where harm never
+reaches execution and leaves no behavioral trace.
 
 % ============================================================
 \section{The \textsc{Trace} Framework}
@@ -479,8 +483,11 @@ poisoning-evasive---each with 30 instances per generator model
 host identifiers to produce distinct attack payloads.  \emph{Overt} attacks use standard payloads.
 \emph{Evasive} attacks use position-aware payload restructuring
 (injection) and payload-less skill descriptions with harmful runtime
-logic (poisoning), designed to yield clean text for pre-execution
-scanners while preserving behavioral consequences.  The benign corpus comprises 240 trajectories drawn from a pool of
+logic (poisoning).  Poisoning trajectories are generated by injecting
+a malicious skill-load observation into the agent loop;
+BadAgent~\cite{shi2024badagent} and Yang et al.~\cite{yang2024watch}
+serve as behavioral-parameter taxonomy references, not as fine-tuning
+generators (the paper's threat model requires no model-weight access).  The benign corpus comprises 240 trajectories drawn from a pool of
 10 unique task templates covering the same five-tool footprint as
 the attack corpus, each executed multiple times under both generator
 models to match the attack corpus size and model distribution.
@@ -505,8 +512,8 @@ Attack cell & Trajectories & Attack format source \\
 \midrule
 Injection --- overt    & 60 & AgentDojo~\cite{debenedetti2024agentdojo} \\
 Injection --- evasive  & 60 & AgentDojo \\
-Poisoning --- overt    & 60 & BadAgent~\cite{shi2024badagent} \\
-Poisoning --- evasive  & 60 & BadAgent \\
+Poisoning --- overt    & 60 & Skill-metadata poisoning~\cite{shi2024badagent,yang2024watch} \\
+Poisoning --- evasive  & 60 & Skill-metadata poisoning \\
 \midrule
 Benign (total)         & 240 & Author-curated tasks \\
 \bottomrule
@@ -674,7 +681,10 @@ F1\,+\,F3 alone                     & 0.949 & $-$0.035 \\
 \end{table}
 
 No single feature group dominates: dropping any one reduces AUC by
-at most 0.004 (Table~\ref{tab:ablation}).  F3 alone reaches
+at most 0.004 (Table~\ref{tab:ablation}).  Removing F5's structural
+counts (step count, tool diversity, loop depth) costs only
+$\Delta{=}{-}0.003$, ruling out template-correlated statistics as the
+primary detection signal.  F3 alone reaches
 AUC~0.760; F1$+$F3 recovers 0.949 (96.4\,\% of full power at
 one-fifth the dimension).  Notably, \emph{dropping} F1 at
 retraining costs only $-$0.004 AUC, whereas \emph{adversarially
@@ -707,9 +717,10 @@ result reflects high behavioral distinctiveness rather than overfit
 but cannot be confirmed without a larger test set ($n{=}96$).
 Cross-model transfer degrades to 0.797--0.854 (drop 0.11--0.20).
 \textbf{H2 is not confirmed}: the $<0.05$ criterion is exceeded by
-2--4$\times$ in both directions.  Features generalize above chance
-but degradation is practically significant; per-deployment
-calibration on a target-model benign corpus is required.
+2--4$\times$ in both directions.  This corroborates Sanna~\cite{sanna2025crossllm},
+who finds a larger 43.4-pp gap across six production LLMs and proposes
+model-identity-aware detection as a mitigation.
+Per-deployment calibration on a target-model benign corpus is required.
 
 \subsection{Exp F/G: Behavioral Baseline and Adaptive Evasion}
 \label{sec:exp_fg}
@@ -766,12 +777,11 @@ non-adaptive threat model; full F2/F5 suppression remains future
 work.
 
 \paragraph{Baseline and benchmark scope.}
-The two runtime baselines (keyword scanner and behavioral rule
-detector, Exp~F) are acknowledged to be weak comparators.
-A learned behavioral competitor was not evaluated; this remains the
-single most important empirical gap.  Results are limited to
-AgentDojo and one skill-poisoning benchmark; the released dataset
-supports independent analysis against additional baselines.
+Zavrak~\cite{zavrak2026contentaware} evaluates XGBoost/GNN classifiers
+on tool-call traffic (AUROC~0.975); \textsc{Trace}'s distinctions
+are cross-attack-family coverage and CPU-only deployment without
+content embeddings.  Results remain limited to two generator models
+and stub tools; the released corpus enables independent comparison.
 
 \paragraph{Deployment and generalizability.}
 \textsc{Trace} is a runtime layer complementary to pre-execution
@@ -795,22 +805,21 @@ security at 95.8\,\% utility.  The FPR-calibrated overdefense
 frontier provides a principled tradeoff tool complementary to
 existing security-utility benchmarks.  Cross-model transfer
 (AUC~0.80--0.85) does not meet the $<0.05$-drop criterion;
-per-deployment calibration is required.  Under worst-case
-F1\,+\,F3 adaptive suppression (Exp~G), DR retains 77.1\,\%.
-Evaluation against a learned behavioral competitor on the same
-corpus is the most important remaining open problem.
+per-deployment calibration is required.  Under worst-case F1\,+\,F3 adaptive suppression (Exp~G), DR retains
+77.1\,\%.  Full adaptive evasion and production-trace validation
+remain open.
 
 % ============================================================
 \bibliographystyle{IEEEtran}
 \bibliography{strings}
 
 % ============================================================
-\section*{AI Use Disclosure}
-% ============================================================
-LLM APIs (Gemini~2.5~Flash~Lite and Llama~3.1~8B~Instruct via
-OpenRouter) were used for agent trajectory generation as described
-in \S\ref{sec:setup}.  No language model was used to generate the
-substantive scientific content, analysis, or manuscript text of
-this paper.
+% \section*{AI Use Disclosure}
+% % ============================================================
+% LLM APIs (Gemini~2.5~Flash~Lite and Llama~3.1~8B~Instruct via
+% OpenRouter) were used for agent trajectory generation as described
+% in \S\ref{sec:setup}.  No language model was used to generate the
+% substantive scientific content, analysis, or manuscript text of
+% this paper.
 
 \end{document}
