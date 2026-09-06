@@ -488,9 +488,9 @@ different F1/F5 feature distributions and are left for future work).
 
 \subsection{Corpus Construction}
 
-Four attack cells are constructed (Table~\ref{tab:corpus}):
-injection-overt, injection-evasive, poisoning-overt,
-poisoning-evasive---each with 30 instances per generator model
+Four attack cells are constructed---injection-overt, injection-evasive,
+poisoning-overt, poisoning-evasive---each with 30 instances per generator
+model
 ($= 60$ trajectories per cell, 240 attack total), drawn from
 5 unique base task templates varied across 9 attacker-controlled
 host identifiers to produce distinct attack payloads.  \emph{Overt} attacks use standard payloads.
@@ -516,25 +516,6 @@ variance at $n{=}96$; it confirms that template memorization is not the
 primary source of detection power.
 All reported metrics are on the held-out test split
 (96~trajectories: 48~attack, 48~benign).
-
-\begin{table}[t]
-\centering
-\caption{Corpus composition (30 instances per generator model $\times$
-  2 models = 60 trajectories per attack cell).}
-\label{tab:corpus}
-\begin{tabular}{lcc}
-\toprule
-Attack cell & Trajectories & Attack format source \\
-\midrule
-Injection --- overt    & 60 & AgentDojo~\cite{debenedetti2024agentdojo} \\
-Injection --- evasive  & 60 & AgentDojo \\
-Poisoning --- overt    & 60 & Skill-metadata poisoning~\cite{shi2024badagent,yang2024watch} \\
-Poisoning --- evasive  & 60 & Skill-metadata poisoning \\
-\midrule
-Benign (total)         & 240 & Author-curated tasks \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \subsection{Baseline and Implementation}
 
@@ -591,36 +572,13 @@ FPR~4.2\,\% (better calibrated for deployment), confirming H1.
 \subsection{Exp B: Evasion Stress Test}
 \label{sec:exp_b}
 
-\begin{table}[t]
-\centering
-\caption{Per-cell attack detection rate at $\theta{=}0.5$
-  ($n{=}12$ attack trajectories per cell $= 60 \times 20\%$
-  test portion).  Per-cell evaluation covers attack trajectories
-  only; aggregate FPR across all 48 benign test trajectories
-  is reported in Table~\ref{tab:efficacy}.
-  Wilson 95\,\% CI: [75.8--100] (first three cells);
-  [64.6--98.5] (evasive poisoning).}
-\label{tab:evasion}
-\begin{tabular}{lcccc}
-\toprule
- & \multicolumn{2}{c}{Injection DR (\%)} &
-   \multicolumn{2}{c}{Poisoning DR (\%)} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}
-Method & Overt & Evasive & Overt & Evasive \\
-\midrule
-Static scanner & \multicolumn{4}{c}{\makebox[0pt][c]{25.0\,\% aggregate (FPR\,=\,0.0\,\%)}} \\
-\textsc{Trace} & 100.0 & 100.0  & 100.0 & 91.7 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Table~\ref{tab:evasion} is the central result.  \textsc{Trace}
-achieves 100\,\% DR on three of four cells and 91.7\,\%
-[64.6--98.5] on evasive poisoning (wide CI reflects $n{=}12$ per
-cell; point estimates should not be over-indexed).  Adaptive evasion
-is quantified in Exp~G (\S\ref{sec:exp_fg}).  The static scanner's
-25\,\% DR confirms the structural failure of text-level inspection
-(H1).
+\textsc{Trace} achieves 100\,\% DR ($n{=}12$, CI [75.8--100]) on
+injection-overt, injection-evasive, and poisoning-overt, and
+91.7\,\% [64.6--98.5] on evasive poisoning (wide CI reflects
+$n{=}12$; point estimates should not be over-indexed).  Adaptive
+evasion is quantified in Exp~G (\S\ref{sec:exp_fg}).  The static
+scanner's 25\,\% aggregate DR confirms text-level inspection fails
+on evasive variants (H1).
 
 \subsection{Exp C: Security-Utility Frontier}
 \label{sec:exp_c}
