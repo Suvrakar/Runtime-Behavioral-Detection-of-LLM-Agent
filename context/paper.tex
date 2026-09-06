@@ -408,9 +408,11 @@ calls to hosts outside this allow-list; exfiltration to an attacker
 domain scores high while benign tasks score near zero.
 
 \paragraph{F4 --- Intent--action consistency.}
-Mean cosine distance (TF-IDF) between the action sequence and the
-task embedding.  Ablation (Exp~D) shows minimal contribution in the
-current implementation; richer embeddings are left for future work.
+Cosine distance between TF-IDF vectors of the task description
+$\mathbf{v}_\tau$ and the action sequence $\mathbf{v}_\ell$:
+\[d_{\mathrm{F4}} = 1 - \frac{\mathbf{v}_\tau\cdot\mathbf{v}_\ell}{\|\mathbf{v}_\tau\|\,\|\mathbf{v}_\ell\|}\]
+Ablation (Exp~D) shows minimal contribution in the current
+implementation; richer embeddings are left for future work.
 
 \paragraph{F5 --- Structural anomalies.}
 Seven scalars: step count, tool diversity, loop depth,
@@ -425,8 +427,11 @@ over $\phi(\ell,\tau)$ with binary cross-entropy loss; hyperparameters
 samples; balanced class weights; seed~42) were selected by grid
 search on the validation split with no further tuning on the test set.
 LightGBM is selected for its lower CPU memory footprint.  The
-classifier outputs score $s \in [0,1]$; training on 288~examples
-completes in under 2\,s on a mid-range laptop CPU.
+classifier outputs $s{=}f(\phi(\ell,\tau))\in[0,1]$; the detection
+decision is
+\[\hat{y}(\ell,\tau)=\mathbf{1}\bigl[f(\phi(\ell,\tau))>\theta\bigr]\]
+Training on 288~examples completes in under 2\,s on a mid-range
+laptop CPU.
 
 \subsection{The Security-Utility Threshold}
 \label{sec:threshold}
