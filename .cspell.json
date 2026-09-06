@@ -58,7 +58,7 @@
     "Hengyu", "Jinghuai", "Chunyi", "Qingming", "Shouling",
     "Haohua", "Guanquan", "Junyang", "HaoRan", "Yunhao", "Kaiwen",
     "Chowdary", "Sanna", "IPIGuard", "MELON", "DRIFT", "MindGuard",
-    "AgentArmor", "agentarmor", "mindguard"
+    "AgentArmor", "agentarmor", "mindguard", "AUROC"
   ],
   "ignorePaths": [
     "*.bib",

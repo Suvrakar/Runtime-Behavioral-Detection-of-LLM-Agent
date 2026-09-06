@@ -454,8 +454,9 @@ the user turn supplies the task; at each step the LLM emits one
 action, the tool executor returns an observation appended as the next
 user turn, and the loop repeats until \texttt{task\_complete} or a
 hard 10-step cap.  API calls use temperature~0.3, max\_tokens~256,
-JSON-object response format, 1.5\,s inter-step delay, and 4-retry
-exponential back-off.
+JSON-object response format, 1.5\,s inter-step delay (API
+rate-limit accommodation; no timing feature is extracted), and
+4-retry exponential back-off.
 
 All tools are \textbf{simulated stubs} (no real network I/O or
 filesystem access).  For injection attacks the first
@@ -523,12 +524,13 @@ Benign (total)         & 240 & Author-curated tasks \\
 \subsection{Baseline and Implementation}
 
 \textsc{Trace} is compared against a \textbf{static keyword scanner}:
-a deny-list from InjectAgent~\cite{zhan2024injectagent} and
-BadAgent~\cite{shi2024badagent} signatures.  \textsc{Trace} is
+a 15-keyword deny-list drawn from InjectAgent~\cite{zhan2024injectagent}
+and BadAgent~\cite{shi2024badagent} signatures.  \textsc{Trace} is
 implemented in Python with LightGBM~\cite{ke2017lightgbm} and
 scikit-learn~\cite{pedregosa2011scikit}; all training and inference
 run on CPU.  The corpus, feature code, and trained weights are
-released (\texttt{[repository link redacted for review]}).
+released via anonymized GitHub mirror
+(\texttt{[link redacted for review]}).
 
 % ============================================================
 \section{Results}
@@ -649,9 +651,13 @@ is quantified in Exp~G (\S\ref{sec:exp_fg}).  The static scanner's
 
 Figure~\ref{fig:frontier} shows the frontier.  At $\theta=0.08$,
 \textsc{Trace} attains 97.9\,\% security at 95.8\,\% utility.
-Lowering $\theta$ to 0.01 reduces utility to 91.7\,\% while
-security stays 97.9\,\%: the one missed attack contacts only
-task-implied hosts, suppressing F1 and F3 simultaneously.  The
+The plateau between $\theta{=}0.08$ and $\theta{=}0.5$ is genuine:
+no benign trajectory scores above 0.08 and no attack trajectory
+scores below 0.5, so detection and utility are identical across
+that interval.  Lowering $\theta$ to 0.01 reduces utility to
+91.7\,\% while security stays 97.9\,\%: the one missed attack
+contacts only task-implied hosts, suppressing F1 and F3
+simultaneously.  The
 static scanner is fixed at (100\,\% utility, 25\,\% security)
 with no tunable trade-off.
 
@@ -744,11 +750,13 @@ F1\,+\,F3 suppressed   & 77.1 & 0.967 \\
 \end{tabular}
 \end{table}
 
-The behavioral rule baseline (Exp~F, Table~\ref{tab:efficacy}) achieves
-DR~50.0\,\% vs.\ 25.0\,\% for the keyword scanner and 97.9\,\% for
-\textsc{Trace}, demonstrating that hand-crafted behavioral rules
-capture a meaningful signal but that ML-learned feature combinations
-provide substantially higher recall at identical FPR.
+The behavioral rule baseline (Exp~F, Table~\ref{tab:efficacy}) uses
+three rules: R1~=~tool contacts a non-task-implied host; R2~=~any
+argument is base64-encoded; R3~=~a POST/write goes to an external
+endpoint.  It achieves DR~50.0\,\% vs.\ 25.0\,\% for the keyword
+scanner and 97.9\,\% for \textsc{Trace}: hand-crafted rules capture
+a meaningful signal but ML-learned combinations provide substantially
+higher recall at identical FPR.
 
 Table~\ref{tab:adaptive} reports the adaptive-attacker ablation
 (Exp~G).  Suppressing F3 alone (routing exfiltration through a
@@ -814,12 +822,12 @@ remain open.
 \bibliography{strings}
 
 % ============================================================
-% \section*{AI Use Disclosure}
-% % ============================================================
-% LLM APIs (Gemini~2.5~Flash~Lite and Llama~3.1~8B~Instruct via
-% OpenRouter) were used for agent trajectory generation as described
-% in \S\ref{sec:setup}.  No language model was used to generate the
-% substantive scientific content, analysis, or manuscript text of
-% this paper.
+\section*{AI Use Disclosure}
+% ============================================================
+LLM APIs (Gemini~2.5~Flash~Lite and Llama~3.1~8B~Instruct via
+OpenRouter) were used for agent trajectory generation only, as
+described in \S\ref{sec:setup}.  No generative AI was used to
+draft, edit, or generate any portion of the manuscript text,
+analysis, or scientific content.
 
 \end{document}
