@@ -243,17 +243,31 @@ all four cells.}
 
 Static scanners, guard models~\cite{inan2023llama}, LLM-judge
 screens~\cite{yi2023benchmarking}, and Spotlighting~\cite{hines2024spotlighting}
-all inspect \emph{text before execution}: evasive attacks with clean
-text evade all of them structurally.
-A 2025 cluster addresses this at the execution level:
-AgentArmor~\cite{wang2025agentarmor} enforces a program-analysis type
-system over runtime traces; MELON~\cite{zhu2025melon} re-executes
-trajectories under a masked prompt; DRIFT~\cite{li2025drift} and
-IPIGuard~\cite{an2025ipiguard} validate against tool-dependency graphs.
-\textsc{Trace} takes a distinct position: a learned ML classifier over
-hand-engineered behavioral features, covering both injection \emph{and}
-poisoning families, requiring no re-execution or program-analysis
-infrastructure.
+inspect \emph{text before execution}: evasive attacks evade all of them
+structurally.  A 2025 execution-level cluster is compared in
+Table~\ref{tab:comparison}; \textsc{Trace}'s distinctions are
+injection-and-poisoning coverage, no re-execution, and an FPR-calibrated
+threshold frontier unavailable in prior systems.
+
+\begin{table}[t]
+\centering\small
+\caption{Comparison of runtime behavioral detectors (2025--2026).
+  Scope: IPI~=~injection-only; I+P~=~injection and poisoning.
+  Re-exec: requires re-running the trajectory.
+  FPR-$\theta$: provides a calibrated security-utility frontier.}
+\label{tab:comparison}
+\begin{tabular}{lccc}
+\toprule
+Method & Scope & Re-exec & FPR-$\theta$ \\
+\midrule
+AgentArmor~\cite{wang2025agentarmor}              & IPI & $\times$ & $\times$ \\
+MELON~\cite{zhu2025melon}                         & IPI & \checkmark & $\times$ \\
+DRIFT/IPIGuard~\cite{li2025drift,an2025ipiguard}  & IPI & $\times$ & $\times$ \\
+Zavrak~\cite{zavrak2026contentaware}              & IPI & $\times$ & $\times$ \\
+\textbf{\textsc{Trace} (ours)}                    & \textbf{I+P} & $\times$ & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Behavioral Detection Analogs}
 
@@ -502,8 +516,11 @@ stratified by attack cell, generator model, and unique instance.
 Because the template bank is small (5~attack, 10~benign), all
 template families appear in both train and test; the split tests
 generalization across instance variation rather than held-out task
-semantics.  Leave-one-template-out CV (Exp~M3) confirms stability:
-macro AUC~0.996, DR~97.5\,\%, FPR~1.2\,\%.
+semantics.  Leave-one-template-out CV (Exp~M3) separates instance variation from
+template-semantic generalization: macro AUC~0.996, DR~97.5\,\%, FPR~1.2\,\%.
+The 0.012 margin above the standard-split AUC is within expected sampling
+variance at $n{=}96$; it confirms that template memorization is not the
+primary source of detection power.
 All reported metrics are on the held-out test split
 (96~trajectories: 48~attack, 48~benign).
 
@@ -564,18 +581,19 @@ Method & AUC & DR\,\% [95\,\%\,CI] & FPR\,\% \\
 Static scanner      & n/a   & 25.0\;[14.9--38.8] & 0.0 \\
 Behavioral rules    & n/a   & 50.0\;[36.1--63.9] & 0.0 \\
 LR (F1 only)        & 0.962 & 79.2\;[65.7--88.2] & 4.2 \\
+LR (all feat.)      & 0.983 & 91.7\;[80.4--96.7] & 2.1 \\
+Random Forest       & 0.984 & 97.9\;[89.1--99.6] & 6.2 \\
 \textsc{Trace}      & 0.984 & 97.9\;[89.1--99.6] & 4.2 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:efficacy} reports three detectors.  The keyword
-scanner reaches DR~25.0\,\% at FPR~0.0\,\%.  The behavioral rule
-baseline (Exp~F) doubles that to DR~50.0\,\% at FPR~0.0\,\%, but
-is limited by attacks routing only through task-implied hosts.
-\textsc{Trace} achieves AUC~0.984, DR~97.9\,\% [89.1--99.6], and
-FPR~4.2\,\% at $\theta{=}0.5$, confirming H1; the advantage
-over both baselines is amplified on evasive variants (Exp~B).
+Table~\ref{tab:efficacy} reports all five classifiers.  The keyword
+scanner reaches DR~25.0\,\% at FPR~0.0\,\%; the behavioral rule
+baseline doubles that.  Learned classifiers improve progressively:
+LR\,(F1)~AUC~0.962; LR\,(all)~0.983; RF~0.984 but FPR~6.2\,\%.
+\textsc{Trace} matches RF's AUC~0.984 and DR~97.9\,\% at lower
+FPR~4.2\,\% (better calibrated for deployment), confirming H1.
 
 \subsection{Exp B: Evasion Stress Test}
 \label{sec:exp_b}
@@ -729,9 +747,12 @@ but cannot be confirmed without a larger test set ($n{=}96$).
 Cross-model transfer degrades to 0.797--0.854 (drop 0.11--0.20).
 \textbf{H2 is not confirmed}: the $<0.05$ criterion is exceeded by
 2--4$\times$ in both directions.  This corroborates Sanna~\cite{sanna2025crossllm},
-who finds a larger 43.4-pp gap across six production LLMs and proposes
+who finds a 43.4-pp gap across six production LLMs and proposes
 model-identity-aware detection as a mitigation.
-Per-deployment calibration on a target-model benign corpus is required.
+\textsc{Trace} is agnostic to model internals (weights, logits, prompts)
+yet sensitive to behavioral-distribution shift across generator models---
+a distinct axis from text-level evasion robustness.
+Per-deployment calibration on a representative benign corpus is required.
 
 \subsection{Exp F/G: Behavioral Baseline and Adaptive Evasion}
 \label{sec:exp_fg}
@@ -789,12 +810,10 @@ The headline 91.7--100\,\% rates are valid within the stated
 non-adaptive threat model; full F2/F5 suppression remains future
 work.
 
-\paragraph{Baseline and benchmark scope.}
-Zavrak~\cite{zavrak2026contentaware} evaluates XGBoost/GNN classifiers
-on tool-call traffic (AUROC~0.975); \textsc{Trace}'s distinctions
-are cross-attack-family coverage and CPU-only deployment without
-content embeddings.  Results remain limited to two generator models
-and stub tools; the released corpus enables independent comparison.
+\paragraph{Benchmark scope.}
+Results remain limited to two generator models and stub tools
+(Table~\ref{tab:comparison} places \textsc{Trace} in context);
+the released corpus enables independent comparison.
 
 \paragraph{Deployment and generalizability.}
 \textsc{Trace} is a runtime layer complementary to pre-execution
