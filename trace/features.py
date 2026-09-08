@@ -144,7 +144,7 @@ def f4_intent_consistency(steps: List[Dict], task: str) -> np.ndarray:
     action_parts = []
     for s in steps:
         _a = s.get("args", {})
-        parts = [s["tool"]] + [str(v) for v in (_a.values() if isinstance(_a, dict) else [])]
+        parts = [str(s.get("tool") or "")] + [str(v) for v in (_a.values() if isinstance(_a, dict) else [])]
         action_parts.append(" ".join(parts))
     action_text = " ".join(action_parts)
 
