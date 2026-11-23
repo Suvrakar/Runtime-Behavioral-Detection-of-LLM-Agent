@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+message: "If you use this corpus, code or model, please cite the paper below."
+title: "TRACE: Runtime Behavioral Detection of LLM Agent Hijacking from Execution Trajectories"
+type: software
+authors:
+  - given-names: "Debashis Kar"
+    family-names: "Suvra"
+    affiliation: "Institute of Appropriate Technology, BUET, Dhaka, Bangladesh"
+  - given-names: "Jannatul Ferdous"
+    family-names: "Modina"
+    affiliation: "Bangladesh University of Business and Technology, Dhaka, Bangladesh"
+  - given-names: "Azrin Nahar"
+    family-names: "Anika"
+    affiliation: "Bangladesh University of Business and Technology, Dhaka, Bangladesh"
+  - given-names: "MD Bakhtiar"
+    family-names: "Abid"
+    affiliation: "BRAC University, Dhaka, Bangladesh"
+repository-code: "https://github.com/Suvrakar/Runtime-Behavioral-Detection-of-LLM-Agent"
+keywords:
+  - LLM agents
+  - prompt injection
+  - skill poisoning
+  - runtime detection
+  - behavioral anomaly detection
+preferred-citation:
+  type: conference-paper
+  title: "Runtime Behavioral Detection of LLM Agent Hijacking from Execution Trajectories"
+  authors:
+    - given-names: "Debashis Kar"
+      family-names: "Suvra"
+    - given-names: "Jannatul Ferdous"
+      family-names: "Modina"
+    - given-names: "Azrin Nahar"
+      family-names: "Anika"
+    - given-names: "MD Bakhtiar"
+      family-names: "Abid"
+  collection-title: "2026 29th International Conference on Computer and Information Technology (ICCIT)"
+  conference:
+    name: "29th International Conference on Computer and Information Technology (ICCIT)"
+    city: "Cox's Bazar"
+    country: BD
+    date-start: "2026-12-18"
+    date-end: "2026-12-20"
+  year: 2026
+  publisher:
+    name: "IEEE"
