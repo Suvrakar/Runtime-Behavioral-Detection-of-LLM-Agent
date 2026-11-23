@@ -35,6 +35,8 @@ Code and corpus for the paper **"Runtime Behavioral Detection of LLM Agent Hijac
 
 (Pages and DOI will be added when IEEE Xplore publishes the proceedings.)
 
+**Also on Kaggle:** https://www.kaggle.com/datasets/suvra123/trace-agent-hijack-trajectories (CC BY 4.0)
+
 ## Summary
 
 LLM agents are vulnerable to indirect prompt injection and skill poisoning. Text-level defenses inspect the trigger text, so they fail against evasive variants whose triggering text is engineered to look clean. The key insight is that **the trigger can be hidden, but the behavioral consequence often cannot**: a hijacked agent must still make unauthorized tool calls, contact attacker-controlled hosts or exfiltrate data.
