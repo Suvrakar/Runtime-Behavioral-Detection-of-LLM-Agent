@@ -16,6 +16,7 @@ authors:
     family-names: "Abid"
     affiliation: "BRAC University, Dhaka, Bangladesh"
 repository-code: "https://github.com/Suvrakar/Runtime-Behavioral-Detection-of-LLM-Agent"
+license: MIT
 keywords:
   - LLM agents
   - prompt injection

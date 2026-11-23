@@ -127,6 +127,10 @@ Rebuild them with `python experiments/export_weights.py`. Load the joblib file o
 
 This is defensive research on detecting hijacked agents. The attack trajectories are synthetic, produced against simulated tools. The detector is evaluated under a non-adaptive threat model. Under full feature suppression its detection rate falls to 54.5%, so it should complement pre-execution defenses, not replace them.
 
+## License
+
+Released under the [MIT License](LICENSE) (code, corpus and weights).
+
 ## Contact
 
 Debashis Kar Suvra, 0421292001@iat.buet.ac.bd
