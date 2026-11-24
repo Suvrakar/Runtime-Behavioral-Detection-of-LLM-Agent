@@ -1,0 +1,110 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{palatino}
+\usepackage[T1]{fontenc}
+\usepackage{xcolor,titlesec,enumitem}
+\usepackage[hidelinks]{hyperref}
+\definecolor{navy}{RGB}{11,37,69}\definecolor{ieeeblue}{RGB}{0,98,155}\definecolor{gray}{RGB}{90,101,114}
+\titleformat{\section}{\Large\bfseries\color{navy}}{}{0em}{}
+\setlength{\parskip}{0.7em}\setlength{\parindent}{0pt}
+\newcommand{\slide}[3]{\section*{Slide #1 --- #2 \hfill {\normalsize\color{gray}#3}}}
+\newcommand{\cue}[1]{{\color{ieeeblue}\itshape [#1]}}
+\begin{document}
+{\LARGE\bfseries\color{navy} Presentation Script}\\[2pt]
+{\large Runtime Behavioral Detection of LLM Agent Hijacking from Execution Trajectories}\\[2pt]
+{\color{gray}IEEE ICCIT 2026 \quad Paper ID 2668 \quad Oral presentation \quad Target: about 13--14 minutes plus questions}
+
+\medskip
+\cue{Blue italic text is a stage direction, not spoken. Times are cumulative guides. Slides 6, 9 and 11 can be shortened or skipped if you are short on time.}
+
+\slide{1}{Title}{0:00--0:30}
+Good morning, everyone. My name is Debashis Kar Suvra, and I am presenting our paper, ``Runtime Behavioral Detection of LLM Agent Hijacking from Execution Trajectories.'' This is joint work with Jannatul Ferdous Modina, Azrin Nahar Anika and MD Bakhtiar Abid.
+
+In one sentence: an attacker can hide the text that hijacks an AI agent, but the agent still has to \emph{do} something harmful afterwards, and we can catch that from what the agent does.
+
+\slide{2}{LLM agents are a new attack surface}{0:30--1:30}
+LLM agents are language models that can call tools. They read files, call APIs, browse the web and run code, often with very little human oversight. That power makes them an attractive target.
+
+Two kinds of attack dominate current research. The first is \emph{indirect prompt injection}. The attacker hides instructions inside content the agent reads, such as a web page, a file, or a tool output, and those instructions redirect what the agent does next. The second is \emph{skill or tool poisoning}. Here the attacker publishes a malicious plugin or MCP server, and the harmful behavior only appears when the agent actually invokes it.
+
+\slide{3}{Text-level defenses inspect only the trigger}{1:30--2:45}
+Most existing defenses look at text before the agent acts: static scanners, guard models, and LLM-based judges. They inspect the \emph{trigger}.
+
+The problem is evasion. We organize attacks into four cells: overt and evasive injection, and overt and evasive poisoning. In the evasive cells, the attacker restructures the payload or ships a payload-less skill, so the text looks completely clean. A text-level defense then has no signal to work with.
+
+We saw this directly. A simple keyword scanner detects only 23.6 percent of attacks in our benchmark.
+
+\slide{4}{Key insight and threat model}{2:45--4:00}
+Our key insight is that the trigger can hide, but the behavior cannot. A hijacked agent still has to exfiltrate data, contact attacker-controlled hosts, or invoke tools the task never needed. All of that shows up as tool calls, arguments and network destinations in the execution log, even when the triggering text is clean.
+
+On the right is our threat model. The attacker controls content the agent reads, or publishes a poisoned skill. The attacker cannot modify the agent framework, our detector, or the task. We assume the attacker is black-box with respect to our detector: they know a behavioral detector may exist, but not its weights or its threshold. The defender sees only the structured execution logs that any agent framework already produces.
+
+\slide{5}{TRACE architecture}{4:00--5:00}
+This is TRACE, which stands for Trajectory-based Runtime Agent Compromise Examiner. A thin telemetry layer passively copies each tool call into a log. It never intercepts or changes the agent's behavior. From that log and the task description we extract a 30-dimensional feature vector, and a LightGBM gradient-boosted classifier outputs a score between zero and one. If the score is above a threshold theta, we flag the run.
+
+There are two modes. In run-level mode we score the completed trajectory before downstream systems consume its outputs. In step-level mode we score every prefix and can flag a run early. TRACE needs no model weights, logits or prompts, and it runs on a CPU in about 0.67 milliseconds per query.
+
+\slide{6}{Thirty behavioral features}{5:00--6:00}
+\cue{Short slide; keep to about a minute.} The features come in five groups. F1 is sequence n-grams: which tool calls follow which, for example reading a file and then sending a POST. F2 captures argument anomalies, such as base64 values, external hosts, deep paths and unusually long arguments. F3 is network destination consistency: what fraction of network calls go to hosts that the task description never implied. F4 is the cosine distance between the task and the actions taken. F5 is structural: step counts, tool diversity, loops, privileged tools and failures.
+
+Later you will see that F1 and F3 carry most of the detection power.
+
+\slide{7}{Benchmark}{6:00--7:00}
+We built a benchmark of 1,133 trajectories: 539 attack and 594 benign, generated by five different LLMs, namely Gemini 2.5 Flash Lite, Llama 3.1 8B and 3.2 3B, Mistral Nemo and Qwen 2.5 7B. The attacks cover the four cells I described. We split the data 60/20/20 into train, validation and test, stratified by attack cell and model. The test set has 110 attack and 118 benign trajectories.
+
+I want to be upfront: all tools in this environment are simulated stubs, and the template bank is small. To check that we are not just memorizing templates, we ran leave-one-template-out cross-validation, which gives AUC 0.983, detection 92.3 percent and false-positive rate 5.5 percent.
+
+\slide{8}{RQ1: behavior beats text-level baselines}{7:00--8:00}
+Our first question: can behavioral trajectories distinguish hijacked from legitimate runs? Yes. At threshold 0.5, TRACE reaches AUC 0.986, with a 95 percent confidence interval of 0.967 to 0.998, and 93.6 percent detection at a 2.5 percent false-positive rate.
+
+The keyword scanner reaches 23.6 percent, and hand-written behavioral rules reach 44.5 percent. Random Forest is statistically indistinguishable from TRACE, because their confidence intervals overlap heavily. So our claim is not that LightGBM beats everything, but that behavioral features beat text-level inspection by a wide margin.
+
+\slide{9}{RQ2: evasive attacks}{8:00--8:45}
+Our second question: does this hold when the text trigger is evasive? TRACE detects between 90.0 and 96.2 percent in every attack cell. The lowest is evasive injection at 90.0, and the highest is overt poisoning at 96.2. The scanner stays at 23.6 percent. The signal lives in behavior, not phrasing.
+
+\slide{10}{Security--utility frontier}{8:45--9:45}
+Threshold theta is the single operator control. Sweeping it traces a security-utility frontier. At theta 0.27, TRACE detects 96.4 percent of attacks while preserving 95.8 percent of legitimate utility. If we lower theta to 0.01, detection rises to 97.3 percent but utility falls to 88.1 percent. A keyword scanner is a single fixed point with no such trade-off. This lets an operator pick a point that matches their own tolerance for false alarms.
+
+\slide{11}{Ablation}{9:45--10:30}
+\cue{Can be skipped under time pressure.} Removing feature groups one at a time shows that no single group dominates. Dropping F1 costs the most, 0.025 AUC. F3 alone reaches only 0.738, but F1 plus F3 reaches 0.972. Differences near zero should be read with care, because the test set is small and AUC is near its ceiling.
+
+\slide{12}{RQ3: cross-model transfer}{10:30--11:30}
+Our third question is about robustness, and here the answer is less comfortable. This matrix shows AUC when we train on one generator model, in rows, and test on another, in columns. In-distribution AUC is high. Within the Llama family transfer is good. Across families it can drop as low as 0.61. We therefore do \emph{not} confirm our hypothesis that transfer loses less than 0.05 AUC. In practice an operator should calibrate on benign logs from the target deployment, either refitting the classifier or at least re-selecting the threshold.
+
+\slide{13}{Adaptive attackers}{11:30--12:15}
+What if the attacker knows which features we use? We simulated suppression of features on attack trajectories. Suppressing F3 alone barely matters, because other features compensate. Suppressing F1 drops detection to 77.3 percent. Suppressing F1, F2 and F3 together drops detection to 54.5 percent, leaving only F4 and F5. That is a real degradation, but it is still 2.3 times the keyword scanner. Full gradient-based attacks against the whole classifier remain future work.
+
+\slide{14}{Step-level mode and latency}{12:15--13:15}
+In step-level mode at theta 0.08, TRACE flags 99.1 percent of attacks before the trajectory finishes, with a median detection at step one. But there is an important caveat that a reviewer asked us to report: when we score every prefix of benign trajectories, 80.5 percent get flagged at least once, compared with 6.8 percent in run-level mode. The classifier was trained on complete trajectories, so short benign prefixes look unusual to it. We therefore describe step-level mode as a recall-oriented trigger, not a deployable blocker. Prefix-aware training is the natural fix, and we have not yet evaluated it.
+
+On latency, scoring takes about 0.64 to 0.67 milliseconds per query, and feature extraction takes about 1.2 milliseconds for a ten-step trajectory. Scoring is stateless, so it should scale horizontally, but we have not measured concurrent multi-agent load or long-horizon trajectories.
+
+\slide{15}{Limitations and future work}{13:15--13:50}
+To summarize the limits: simulated tools, a small template bank, trajectories generated by LLMs that may contain simulation artifacts, weak cross-model transfer, and the step-level false-positive rate. Future work includes enforcing the host allow-list at a gateway, taint tracking from untrusted inputs to network writes, adversarial training on suppressed attacks, sequence models, and validation on live agent traces. These are proposals, not results.
+
+\slide{16}{Conclusions}{13:50--14:30}
+Three takeaways. First, behavior survives text-level evasion: AUC 0.986, and 90 to 96 percent detection in every attack cell, versus 23.6 percent for a keyword scanner. Second, TRACE is tunable and lightweight, with an FPR-calibrated frontier on a CPU. Third, the open challenges are cross-model calibration, adaptive attackers and step-level false positives.
+
+\slide{17}{Thank you}{14:30--}
+Our corpus, feature code and trained weights are public, and the classifier experiments reproduce without any LLM API calls. Thank you. I am happy to take questions.
+
+\newpage
+\section*{Prepared answers to likely questions}
+\textbf{Which features let the classifier generalize across different generator models?}
+We think F3 and the F2 counts generalize best, because they are defined by the task and the tools rather than by a model's phrasing. F1, the tool-name n-grams, encodes each model's habits and is the likely source of the cross-family drop. We have not tested this directly, and we do not claim the features are generator-invariant.
+
+\textbf{What would stop an adversary who deliberately mimics benign behavior?}
+Our adaptive experiment is a coarse proxy: with F1, F2 and F3 suppressed, detection falls to 54.5 percent. Ideas we have not yet evaluated: enforce the host allow-list at a gateway so exfiltration is blocked outright, track taint from untrusted observations to network-write tools, train adversarially on suppressed attacks, and use sequence models over event streams.
+
+\textbf{How scalable is 0.67 ms per query for concurrent, long-horizon agents?}
+Scoring is stateless per trajectory, so it parallelizes horizontally. Batched scoring costs about 0.002 ms per trajectory, but feature extraction dominates at about 1.2 ms for ten steps, and naive per-prefix re-extraction is quadratic in length unless counters are incremental. We did not measure concurrent multi-agent load or trajectories longer than ten steps.
+
+\textbf{Are the tools real?}
+No. All tools are simulated stubs, and the template bank is small, so results are in-benchmark estimates. Validation on live agent traces is needed.
+
+\textbf{Is TRACE better than Random Forest?}
+Not significantly. Their AUC confidence intervals overlap. The main claim is behavioral versus text-level detection.
+
+\textbf{Does it stop the attack?}
+Run-level mode flags a finished run and prevents its outputs from propagating, but it cannot reverse tool calls already made. Step-level mode can flag earlier, but currently with a high benign false-positive rate.
+\end{document}

@@ -12,3 +12,11 @@ data/trajectories/
 *.out
 *.synctex.gz
 *.pdf
+
+# personal / submission files (signature, phone, payment, copyright)
+camera_ready/source_forms/
+camera_ready/submission/
+camera_ready/certified/
+camera_ready/upload/
+camera_ready/upload_new/
+*.docx

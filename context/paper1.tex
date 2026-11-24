@@ -513,7 +513,7 @@ implemented in Python with LightGBM~\cite{ke2017lightgbm} and
 scikit-learn~\cite{pedregosa2011scikit}; all training and inference
 run on CPU.  The corpus, feature code, and trained weights are
 released at
-\url{https://github.com/Suvrakar/llm-hijacking-paper}.
+\url{https://github.com/Suvrakar/Runtime-Behavioral-Detection-of-LLM-Agent}.
 
 % ============================================================
 \section{Results}
@@ -551,11 +551,9 @@ Random Forest       & 0.981\;[.959--.996] & 92.7\;[86.3--96.3] & 2.5 \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:efficacy} reports all five classifiers on the expanded
-five-model corpus.  The keyword scanner reaches DR~23.6\,\% at
-FPR~0.0\,\%; the behavioral rule baseline roughly doubles that.
-Learned classifiers improve progressively: LR\,(F1)~AUC~0.907;
-LR\,(all)~0.965; RF~0.981 at FPR~2.5\,\%.  \textsc{Trace} achieves
+Table~\ref{tab:efficacy} reports all classifiers.  The keyword
+scanner reaches DR~23.6\,\% at FPR~0.0\,\%; behavioral rules roughly
+double that.  \textsc{Trace} achieves
 AUC~0.986 (95\,\% CI 0.967--0.998) and DR~93.6\,\% at FPR~2.5\,\%.
 The AUC intervals of \textsc{Trace} and RF overlap substantially, so
 their difference is not statistically meaningful on a 228-trajectory
@@ -572,16 +570,13 @@ The static scanner's 23.6\,\% aggregate confirms text-level inspection
 fails on evasive variants.  In step-level mode (Exp~S, $\theta{=}0.08$):
 99.1\,\% detected, 99.1\,\% flagged before the final step (median
 detection step~1 of 4.2~mean), 55.5\,\% of malicious actions
-prevented before the exfiltration step.  \textbf{This comes at a
-substantial false-positive cost}: scoring every prefix of the 118 benign
-test trajectories, 95 (80.5\,\%, Wilson 95\,\% CI 72.4--86.6\,\%) are
-flagged at least once at $\theta{=}0.08$ (69.5\,\% at $\theta{=}0.5$),
-versus 6.8\,\% for run-level scoring at the same $\theta$.  The
-classifier is trained on complete trajectories, so short benign
-prefixes look atypical, and the early-detection numbers therefore
-overstate deployable performance.  Training on prefix-augmented data
-and requiring a minimum prefix length are natural remedies that we
-have not evaluated.
+prevented before the exfiltration step.  \textbf{This has a
+substantial false-positive cost}: 95 of 118 benign test trajectories
+(80.5\,\%, Wilson CI 72.4--86.6\,\%) are flagged on at least one prefix
+at $\theta{=}0.08$ (69.5\,\% at $\theta{=}0.5$) versus 6.8\,\% for
+run-level scoring, because the classifier is trained on complete
+trajectories.  Early-detection numbers therefore overstate deployable
+performance; prefix-augmented training is untested.
 
 \subsection{Exp C: Security-Utility Frontier}
 \label{sec:exp_c}
@@ -626,11 +621,9 @@ have not evaluated.
 \label{fig:frontier}
 \end{figure}
 
-Figure~\ref{fig:frontier} shows the frontier.  At $\theta=0.27$,
-\textsc{Trace} attains 96.4\,\% security at 95.8\,\% utility.
-Lowering $\theta$ to 0.01 reduces utility to 88.1\,\% while
-security rises to 97.3\,\%.  The static scanner is fixed at
-(100\,\% utility, 23.6\,\% security) with no tunable trade-off.
+Figure~\ref{fig:frontier} shows the frontier: at $\theta=0.27$,
+96.4\,\% security at 95.8\,\% utility; at $\theta=0.01$, 97.3\,\% at
+88.1\,\%.  The scanner is a single fixed point.
 
 \subsection{Exp D: Feature Ablation}
 \label{sec:exp_d}
@@ -663,12 +656,7 @@ $\Delta{=}{-}0.025$ AUC.  F4 (intent--action cosine) contributes
 $-0.012$, confirming that semantic consistency adds complementary
 signal beyond tool-call statistics.  F3 alone reaches AUC~0.738;
 F1$+$F3 recovers 0.972 (98.6\,\% of full power at one-third the
-dimension).  Notably, \emph{dropping} F1 at retraining costs
-$-0.025$ AUC, whereas \emph{adversarially suppressing} F1 at
-inference (Exp~G) costs 16.4\,pp of DR: redundant-but-load-bearing
-features behave differently under retraining versus adversarial
-corruption at test time.
-
+dimension).  
 \subsection{Exp E: Cross-Model Transfer}
 \label{sec:exp_e}
 
@@ -700,21 +688,7 @@ criterion is exceeded across most off-diagonal pairs.
 This corroborates Sanna~\cite{sanna2025crossllm},
 who finds a 43.4-pp gap across six production LLMs and proposes
 model-identity-aware detection as a mitigation.
-\textsc{Trace} is agnostic to model internals (weights, logits, prompts)
-yet sensitive to behavioral-distribution shift across generator models---
-a distinct axis from text-level evasion robustness.
-Per-deployment calibration on a representative benign corpus is required.
-
-\paragraph{How calibration works in practice.}
-Before enabling blocking on a new agent or generator model, the operator
-(i)~collects benign trajectories from that deployment (the number
-needed is not validated here), (ii)~refits the classifier on these plus
-the released attack corpus or, if refitting is not possible, keeps the
-released weights and only re-selects $\theta$ as the score quantile
-that meets the operator's FPR budget on the benign set, and
-(iii)~re-checks the frontier of Fig.~\ref{fig:frontier} on a held-out
-benign slice.  The threshold-only variant corrects score shift but not
-feature shift, so it is weaker than refitting.
+Per-deployment calibration is required (\S\ref{sec:discussion}).
 
 \subsection{Exp F/G: Behavioral Baseline and Adaptive Evasion}
 \label{sec:exp_fg}
@@ -739,13 +713,9 @@ F1\,+\,F2\,+\,F3 suppressed & 54.5 & 0.927 \\
 \end{tabular}
 \end{table}
 
-The behavioral rule baseline (Exp~F, Table~\ref{tab:efficacy}) uses
-three rules: R1~=~tool contacts a non-task-implied host; R2~=~any
-argument is base64-encoded; R3~=~a POST/write goes to an external
-endpoint.  It achieves DR~44.5\,\% vs.\ 23.6\,\% for the keyword
-scanner and 93.6\,\% for \textsc{Trace}: hand-crafted rules capture
-a meaningful signal but ML-learned combinations provide substantially
-higher recall at identical FPR.
+The behavioral rule baseline (Exp~F) uses three rules: R1~=~non-task-implied
+host; R2~=~base64 argument; R3~=~POST to an external endpoint.  It reaches
+DR~44.5\,\% versus 23.6\,\% for the keyword scanner and 93.6\,\% for \textsc{Trace}.
 
 Table~\ref{tab:adaptive} reports the adaptive-attacker ablation
 (Exp~G/G2, answering RQ3).  F3 suppression alone reduces DR by 2.7\,pp
@@ -754,79 +724,51 @@ to 90.9\,\% (F4/F5 compensate); F1 suppression reduces DR to 77.3\,\%
 Full F1\,+\,F2\,+\,F3 suppression (Exp~G2: an attacker who avoids
 suspicious bigrams, base64, external hosts, and POST calls
 simultaneously) reduces DR to 54.5\,\% (AUC~0.927), leaving only
-F4/F5 signal.  The residual F4/F5 signal is stronger in the
-five-model corpus than with two models, reflecting the higher
-task-semantic diversity captured by the expanded template bank.
-Full gradient-based optimization against the complete classifier
-remains future work.
+F4/F5 signal.  Full gradient-based optimization remains future work.
 
 % ============================================================
 \section{Discussion}
 \label{sec:discussion}
 % ============================================================
 
-\paragraph{Adaptive attackers.}
-Behavioral signals remain informative under textual evasion, but
-adaptive behavioral suppression substantially degrades detection:
-simultaneous F1\,+\,F2\,+\,F3 suppression reduces DR to 54.5\,\%
-(AUC~0.927), though this remains 2.3$\times$ the keyword scanner.
-Full gradient-based optimization against the complete feature set
-is the key open challenge.
+\paragraph{Adaptive attackers and mimicry.}
+Simultaneous F1\,+\,F2\,+\,F3 suppression leaves only F4/F5 signal and
+cuts DR to 54.5\,\% (still 2.3$\times$ the keyword scanner).  We have
+not evaluated, but consider promising: (i)~enforcing the implied host
+allow-list at a gateway rather than only scoring it; (ii)~taint
+tracking from untrusted observations to network-write tools;
+(iii)~adversarial training on suppression-augmented attacks; and
+(iv)~sequence models over event streams instead of bag-of-bigrams.
 
-\paragraph{Which features generalize across generator models.}
-F1 and F3 carry most of the signal; F1$+$F3 alone recover AUC~0.972
-(Table~\ref{tab:ablation}).  F3 (fraction of network calls outside the
-task-implied host list) and F2's counts are defined by task and tool
-semantics rather than a model's phrasing, so they are the most plausible
-model-agnostic signals.  F1 (tool-name n-grams) encodes each model's
-tool-use habits and is the likeliest source of the cross-family
-degradation in Table~\ref{tab:transfer}.  We did not test this
-attribution directly (e.g., transfer using F2/F3 only), and we do not
-claim the current feature set is generator-invariant.
+\paragraph{Feature generalization and calibration.}
+F3 and F2 are defined by task and tool semantics rather than a model's
+phrasing, so they are the most plausible model-agnostic signals; F1
+(tool-name n-grams) encodes each model's tool-use habits and is the
+likeliest source of the cross-family degradation in
+Table~\ref{tab:transfer} (untested; the feature set is not claimed to
+be generator-invariant).  In practice, an operator should collect
+benign trajectories from the target deployment and either refit the
+classifier on them plus the released attack corpus, or, if refitting is
+impossible, re-select $\theta$ as the score quantile meeting the FPR
+budget; the latter corrects score shift but not feature shift.
 
-\paragraph{Mimicry adversaries.}
-An adversary who deliberately mimics benign execution (Exp~G2 is a
-coarse proxy) leaves only F4/F5 signal and cuts DR to 54.5\,\%.
-Architectural options we consider promising but have not evaluated:
-(i)~enforcing the implied host allow-list at a gateway rather than only
-scoring it, so out-of-policy exfiltration is blocked outright;
-(ii)~taint tracking of data flowing from untrusted observations to
-network-write tools; (iii)~adversarial training with
-suppression-augmented attack examples; and (iv)~sequence models over
-event streams in place of bag-of-bigrams features.
-
-\paragraph{Scalability.}
-Scoring a precomputed feature vector takes 0.64--0.67\,ms for a single
-query and 0.002\,ms per trajectory in batches (about
-$5{\times}10^{5}$ trajectories/s on one CPU core in our measurement).
-Feature extraction dominates in practice: 1.2\,ms for a 10-step
+\paragraph{Scalability and timing.}
+Scoring takes 0.64--0.67\,ms per query (0.002\,ms per trajectory
+batched); feature extraction dominates at 1.2\,ms for a 10-step
 trajectory.  Scoring is stateless per trajectory, so concurrent agents
-can scale horizontally with no shared state.  Naively re-extracting
-features for every prefix makes step-level cost quadratic in
-trajectory length; incremental counters would make it linear.  We have
-not measured concurrent multi-agent load or long-horizon
-(${>}10$-step) trajectories, so these figures should not be
-extrapolated to such settings.
+scale horizontally; per-prefix re-extraction makes step-level cost
+quadratic in length unless counters are incremental.  Concurrent
+multi-agent load and long-horizon trajectories were not measured.
+Run-level detection cannot reverse tool calls already issued, and
+step-level mode currently flags 80.5\,\% of benign runs at
+$\theta{=}0.08$, so irreversible-side-effect deployments need a
+prefix-trained classifier before blocking.
 
-\paragraph{Detection timing.}
-Run-level detection prevents downstream consumption of a flagged
-trajectory's outputs but cannot reverse tool calls already issued.
-Step-level detection (Exp~S) flags 99.1\,\% of attacks before the
-final step but also flags 80.5\,\% of benign runs at $\theta{=}0.08$;
-deployments with immediately irreversible side effects
-should operate in step-level mode with a lower $\theta$.
-
-\paragraph{Generalizability.}
-Cross-model transfer varies widely (AUC~0.61--1.00); per-deployment
-calibration on a representative benign corpus is required.  All
-tools are \textbf{simulated stubs}, the environment has only five
-tools, and the template bank is small (15 attack and 25 benign base
-templates, varied only by host, repetition and generator model), so
-the reported rates are in-benchmark estimates that may not reflect
-production variability; validation on live agent traces is necessary.
-Because trajectories come from LLM-driven simulation, the detector may
-also partly learn simulation artifacts rather than purely behavioral
-signal.
+\paragraph{Limitations.}
+All tools are \textbf{simulated stubs} (five tools), the template bank
+is small (15 attack, 25 benign), and trajectories are LLM-simulated, so
+the detector may partly learn simulation artifacts; results are
+in-benchmark estimates and need validation on live agent traces.
 \textsc{Trace} complements pre-execution
 defenses~\cite{hines2024spotlighting,inan2023llama}.
 
@@ -837,21 +779,15 @@ defenses~\cite{hines2024spotlighting,inan2023llama}.
 
 Three findings emerge.
 \textbf{(1)}~Behavioral trajectories survive text-level evasion
-(RQ1--RQ2): \textsc{Trace} achieves AUC~0.986, 90.0--96.2\,\% DR
-across four attack cells within TM-A, versus 23.6\,\% for a keyword
-scanner; in step-level mode, 99.1\,\% of attacks are flagged before
-trajectory completion (0.67\,ms/query).
-\textbf{(2)}~Multi-feature ML outperforms baselines: \textsc{Trace}
-achieves AUC~0.986 and DR~93.6\,\% at FPR~2.5\,\%; the FPR-calibrated
-frontier enables principled threshold selection.
-\textbf{(3)}~Generalization and robustness are the open challenges
-(RQ3): cross-model transfer varies widely (AUC~0.61--1.00, weakest
-cross-family) and requires per-deployment calibration; full
-F1\,+\,F2\,+\,F3 feature-aware suppression reduces DR to 54.5\,\%
-(F4/F5 residual), with full gradient-based optimization remaining
-future work.
+(RQ1--RQ2): AUC~0.986 and 90.0--96.2\,\% DR across four attack cells
+versus 23.6\,\% for a keyword scanner, at FPR~2.5\,\%.
+\textbf{(2)}~The FPR-calibrated frontier enables principled threshold
+selection; step-level mode flags 99.1\,\% of attacks early but needs
+prefix-aware training to be usable (80.5\,\% benign prefix FPR).
+\textbf{(3)}~Generalization and robustness are open (RQ3): cross-model
+AUC spans 0.61--1.00 and needs per-deployment calibration, and full
+F1\,+\,F2\,+\,F3 suppression reduces DR to 54.5\,\%.
 
-% ============================================================
 \bibliographystyle{IEEEtran}
 \bibliography{strings}
 

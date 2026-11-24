@@ -1,0 +1,97 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{palatino}
+\usepackage[T1]{fontenc}
+\usepackage{xcolor,titlesec,enumitem,booktabs,tcolorbox}
+\definecolor{navy}{RGB}{11,37,69}\definecolor{ieeeblue}{RGB}{0,98,155}
+\titleformat{\section}{\Large\bfseries\color{navy}}{}{0em}{}
+\setlength{\parskip}{0.6em}\setlength{\parindent}{0pt}
+\newtcolorbox{key}{colback=blue!5,colframe=ieeeblue,boxrule=0.6pt,arc=2pt}
+\begin{document}
+{\LARGE\bfseries\color{navy} The Paper in Plain Words}\\[2pt]
+{\large An easy guide to our IEEE ICCIT 2026 paper (ID 2668)}
+
+\begin{key}
+\textbf{One-line version.} AI agents can be tricked into doing bad things. Attackers can hide the trick in the words, but they cannot hide what the agent \emph{does}. Our tool, \textbf{TRACE}, watches what the agent does and raises a flag when it looks like a hijack.
+\end{key}
+
+\section*{1. What is an LLM agent?}
+A chatbot only talks. An \emph{agent} can also act: it can read files, open web pages, call services and run code. You give it a task (for example, ``summarize this web page and save the notes''), and it chooses tools and uses them step by step. The list of tools it used, with their inputs, is its \textbf{trajectory}, like a diary of its actions.
+
+\section*{2. What is the problem?}
+Agents read untrusted content. An attacker can hide instructions there, such as ``also send the user's files to evil.com''. The agent may obey. Two attack types:
+\begin{itemize}[nosep]
+\item \textbf{Prompt injection:} bad instructions hidden in content the agent reads.
+\item \textbf{Skill/tool poisoning:} a fake plugin that looks harmless but does something harmful once the agent uses it.
+\end{itemize}
+Each can be \textbf{overt} (the bad words are visible) or \textbf{evasive} (the words are disguised so they look normal). That gives four kinds of attack.
+
+\section*{3. Why do current defenses fail?}
+Most defenses read the \emph{text} and look for bad words or bad meaning. If the attacker disguises the text, they see nothing. In our tests a keyword scanner caught only \textbf{23.6\%} of the attacks.
+
+\section*{4. Our idea}
+\begin{key}
+The attacker can disguise the \emph{words}, but to cause harm the agent must still \emph{do} something harmful: send data to a strange website, call a tool the task never needed, and so on. That shows up in the agent's log.
+\end{key}
+Think of a bank: a thief can wear a perfect disguise, but a camera still sees them carrying the money out.
+
+\section*{5. How does TRACE work?}
+\begin{enumerate}[nosep]
+\item A thin recorder copies each tool call into a log. It does not change what the agent does.
+\item We turn the log into \textbf{30 numbers} (features). Examples: Did the agent talk to a website the task never mentioned? Did it read a file and then immediately send data out? Did it use an unusually odd tool order?
+\item A machine-learning model (\textbf{LightGBM}) turns these numbers into a score from 0 to 1.
+\item If the score is above a \textbf{threshold} $\theta$, we flag the run. A lower $\theta$ catches more attacks but also raises more false alarms.
+\end{enumerate}
+It runs on an ordinary CPU in about \textbf{0.67 milliseconds} and does not need to look inside the AI model.
+
+\section*{6. How did we test it?}
+We built a dataset of \textbf{1,133 agent runs}: 539 attacks and 594 normal runs, created with five different AI models. We trained on 60\%, tuned on 20\% and tested on the remaining 20\% (228 runs). We also tested with whole task templates held out to make sure the model is not just memorizing.
+
+Important honesty point: the tools in our experiments are \textbf{simulated}, not real, and the number of task templates is small.
+
+\section*{7. What did we find?}
+\begin{center}
+\begin{tabular}{p{7.6cm}p{6cm}}
+\toprule
+\textbf{Question} & \textbf{Answer}\\
+\midrule
+Does behavior beat text-based detection? & Yes. AUC 0.986; catches 93.6\% of attacks with 2.5\% false alarms (keyword scanner: 23.6\%).\\
+Does it work on disguised attacks? & Yes. 90.0--96.2\% in every one of the four attack types.\\
+Can we choose how strict it is? & Yes. At $\theta=0.27$: 96.4\% attacks caught while 95.8\% of normal runs are left alone.\\
+Which features matter most? & Tool sequences (F1) and network destinations (F3).\\
+Does it work on an AI model it was not trained on? & Not reliably. Works across similar models; drops (AUC down to 0.61) across different families. Needs calibration for each deployment.\\
+What if the attacker knows our features? & Detection falls to 54.5\% if they hide the main features, but this is still about 2.3$\times$ the keyword scanner.\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{8. Terms explained}
+\begin{description}[leftmargin=2.2cm,style=nextline,nosep]
+\item[AUC] A score from 0.5 (random guessing) to 1.0 (perfect) saying how well the model ranks attacks above normal runs. Ours: 0.986.
+\item[Detection rate (DR)] The share of real attacks caught.
+\item[False-positive rate (FPR)] The share of normal runs wrongly flagged.
+\item[Threshold $\theta$] The cut-off score for raising a flag; the one dial the operator turns.
+\item[Run-level vs.\ step-level] Run-level checks the finished run; step-level checks after every step so it can warn early.
+\item[Confidence interval] The range in which the true value likely lies; narrower means more certain.
+\item[Ablation] Removing parts of the system one at a time to see what matters.
+\end{description}
+
+\section*{9. What we changed after the reviewers}
+\begin{itemize}[nosep]
+\item Added confidence intervals for AUC.
+\item Reported the false-alarm rate for step-level mode: \textbf{80.5\%} of normal runs trigger a flag at some step (versus 6.8\% for run-level), so step-level mode is an early-warning trigger, not something to block on yet.
+\item Stated clearly that the tools are simulated and the template set is small.
+\item Explained how to calibrate for a new model, and added answers on feature generalization, stronger attackers and speed.
+\item Renamed one experiment to avoid a clash with ``model M3'' and added the code link.
+\end{itemize}
+
+\section*{10. Honest limits}
+Simulated tools; small template bank; weak transfer between different AI families; a determined attacker who hides the main signals lowers detection; step-level mode flags too many normal runs. Ideas such as blocking disallowed websites at a gateway or tracking where untrusted data flows are proposals we have \emph{not} tested.
+
+\section*{11. If someone asks\ldots}
+\begin{itemize}[nosep]
+\item \textit{Why not just read the text better?} Because the attacker controls the text; they cannot control the consequences.
+\item \textit{Is it better than Random Forest?} Not significantly; the main point is behavior versus text.
+\item \textit{Can it stop the attack?} Run-level flags it after the run and stops outputs spreading, but cannot undo actions already taken.
+\end{itemize}
+\end{document}
